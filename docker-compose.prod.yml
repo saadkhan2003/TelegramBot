@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ============================================================================
   # Database: PostgreSQL 16
@@ -43,12 +41,13 @@ services:
   # Backend API: NestJS Core Engine
   # ============================================================================
   api:
+    image: delux-store-app:latest
     build:
       context: .
       dockerfile: Dockerfile
-      target: api
     container_name: delux_store_api
     restart: unless-stopped
+    working_dir: /app/apps/api
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,18 +74,17 @@ services:
   # Frontend: Next.js Fluent Admin Web Panel
   # ============================================================================
   admin-web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: admin-web
+    image: delux-store-app:latest
     container_name: delux_store_admin_web
     restart: unless-stopped
+    working_dir: /app/apps/admin-web
     depends_on:
       - api
     environment:
       NODE_ENV: production
       PORT: 3000
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://178.105.157.51:4000/api/v1}
+    command: pnpm start
     ports:
       - '3000:3000'
     networks:
@@ -96,12 +94,10 @@ services:
   # Telegram Bot Daemon: GrammY Engine
   # ============================================================================
   telegram-bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: bot
+    image: delux-store-app:latest
     container_name: delux_store_bot
     restart: unless-stopped
+    working_dir: /app/apps/telegram-bot
     depends_on:
       - api
       - postgres
@@ -112,6 +108,7 @@ services:
       REDIS_URL: redis://redis:6379
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    command: node dist/index.js
     networks:
       - delux_network
 
@@ -119,12 +116,10 @@ services:
   # Async Worker Daemon: BullMQ Orders & Cron Processor
   # ============================================================================
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: worker
+    image: delux-store-app:latest
     container_name: delux_store_worker
     restart: unless-stopped
+    working_dir: /app/apps/worker
     depends_on:
       - api
       - postgres
@@ -135,6 +130,7 @@ services:
       REDIS_URL: redis://redis:6379
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    command: node dist/index.js
     networks:
       - delux_network
 
