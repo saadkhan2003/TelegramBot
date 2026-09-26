@@ -12,11 +12,14 @@ import {
   CheckCheck,
   Check,
   X,
+  Menu,
 } from 'lucide-react';
 import { fetchApi } from '../lib/api';
+import { useNavigation } from '../context/NavigationContext';
 
 export default function Header() {
   const router = useRouter();
+  const { toggleMobileMenu } = useNavigation();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -94,19 +97,38 @@ export default function Header() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-[#edebe9] flex items-center justify-between px-8 sticky top-0 z-30 shadow-xs">
-      <div className="flex items-center gap-3 w-96">
+    <header className="h-16 bg-white border-b border-[#edebe9] flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-30 shadow-xs">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-lg">
+        {/* Mobile Hamburger Drawer Toggle */}
+        <button
+          onClick={toggleMobileMenu}
+          className="lg:hidden p-2 rounded-[4px] text-[#605e5c] hover:text-[#201f1e] hover:bg-[#f3f2f1] transition -ml-1 shrink-0"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
+        {/* Search Input */}
         <div className="relative w-full">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8886]" />
           <input
             type="text"
-            placeholder="Search orders, customers, TxIDs (e.g. ORD-2026...)"
-            className="w-full bg-[#f3f2f1] border border-[#d2d0ce] rounded-[4px] pl-9 pr-4 py-1.5 text-xs text-[#201f1e] placeholder-[#a19f9d] focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4] transition"
+            placeholder="Search orders, customers, TxIDs..."
+            className="w-full bg-[#f3f2f1] border border-[#d2d0ce] rounded-[4px] pl-9 pr-3 py-1.5 text-xs text-[#201f1e] placeholder-[#a19f9d] focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4] transition"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0 ml-2">
+        {/* Production Online Beacon */}
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-[4px] bg-[#dff6dd]/60 border border-[#a8e5a3]/50">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#107c10] opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#107c10]" />
+          </span>
+          <span className="hidden sm:inline text-[11px] font-semibold text-[#107c10]">Production Online</span>
+        </div>
+
         {/* Notification Bell Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
@@ -128,7 +150,7 @@ export default function Header() {
 
           {/* Microsoft Fluent Light Dropdown Popover */}
           {isOpen && (
-            <div className="absolute right-0 mt-2 w-96 bg-white border border-[#edebe9] rounded-[4px] shadow-fluentModal z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white border border-[#edebe9] rounded-[4px] shadow-fluentModal z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
               {/* Header */}
               <div className="px-4 py-3 border-b border-[#edebe9] bg-[#faf9f8] flex items-center justify-between">
                 <div className="flex items-center gap-2">

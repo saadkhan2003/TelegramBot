@@ -1093,7 +1093,8 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <table className="w-full text-left text-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[650px]">
               <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
                 <tr>
                   <th className="px-6 py-3 font-semibold">Action</th>
@@ -1127,6 +1128,7 @@ export default function SettingsPage() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

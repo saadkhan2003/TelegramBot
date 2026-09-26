@@ -222,8 +222,8 @@ export default function SupportPage() {
 
       {/* Main Table */}
       {tab === 'tickets' ? (
-        <div className="bg-white border border-[#edebe9] rounded-[4px] overflow-hidden shadow-sm">
-          <table className="w-full text-left text-xs">
+        <div className="bg-white border border-[#edebe9] rounded-[4px] overflow-x-auto shadow-sm">
+          <table className="w-full text-left text-xs min-w-[700px]">
             <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
               <tr>
                 <th className="px-6 py-3 font-semibold">Ticket ID</th>
@@ -288,8 +288,8 @@ export default function SupportPage() {
           </table>
         </div>
       ) : (
-        <div className="bg-white border border-[#edebe9] rounded-[4px] overflow-hidden shadow-sm">
-          <table className="w-full text-left text-xs">
+        <div className="bg-white border border-[#edebe9] rounded-[4px] overflow-x-auto shadow-sm">
+          <table className="w-full text-left text-xs min-w-[700px]">
             <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
               <tr>
                 <th className="px-6 py-3 font-semibold">Claim ID</th>
