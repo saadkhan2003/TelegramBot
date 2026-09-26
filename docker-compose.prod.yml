@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Database: PostgreSQL 16
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: delux_store_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_secure_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-telegram_store}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-telegram_store}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - delux_network
+
+  # ============================================================================
+  # Cache & Job Queue: Redis 7
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: delux_store_redis
+    restart: unless-stopped
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - delux_network
+
+  # ============================================================================
+  # Backend API: NestJS Core Engine
+  # ============================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    container_name: delux_store_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres_secure_pass}@postgres:5432/${POSTGRES_DB:-telegram_store}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-delux_super_secret_jwt_key_2026_production}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
+      ADMIN_WEB_URL: ${ADMIN_WEB_URL:-*}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    command: >
+      sh -c "pnpm --filter @telegram-store/database db:migrate && node dist/main.js"
+    ports:
+      - '4000:4000'
+    networks:
+      - delux_network
+
+  # ============================================================================
+  # Frontend: Next.js Fluent Admin Web Panel
+  # ============================================================================
+  admin-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: admin-web
+    container_name: delux_store_admin_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://178.105.157.51:4000/api/v1}
+    ports:
+      - '3000:3000'
+    networks:
+      - delux_network
+
+  # ============================================================================
+  # Telegram Bot Daemon: GrammY Engine
+  # ============================================================================
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: bot
+    container_name: delux_store_bot
+    restart: unless-stopped
+    depends_on:
+      - api
+      - postgres
+      - redis
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres_secure_pass}@postgres:5432/${POSTGRES_DB:-telegram_store}?schema=public
+      REDIS_URL: redis://redis:6379
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    networks:
+      - delux_network
+
+  # ============================================================================
+  # Async Worker Daemon: BullMQ Orders & Cron Processor
+  # ============================================================================
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    container_name: delux_store_worker
+    restart: unless-stopped
+    depends_on:
+      - api
+      - postgres
+      - redis
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres_secure_pass}@postgres:5432/${POSTGRES_DB:-telegram_store}?schema=public
+      REDIS_URL: redis://redis:6379
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    networks:
+      - delux_network
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+
+networks:
+  delux_network:
+    driver: bridge

@@ -67,8 +67,23 @@ export class WalletsService {
       this.prisma.walletTransaction.count({ where }),
     ]);
 
+    const sanitizedItems = items.map((tx) => ({
+      ...tx,
+      wallet: tx.wallet
+        ? {
+            ...tx.wallet,
+            user: tx.wallet.user
+              ? {
+                  ...tx.wallet.user,
+                  telegramUserId: tx.wallet.user.telegramUserId?.toString(),
+                }
+              : null,
+          }
+        : null,
+    }));
+
     return {
-      data: items,
+      data: sanitizedItems,
       pagination: {
         page,
         limit,

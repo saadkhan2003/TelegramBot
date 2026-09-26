@@ -18,6 +18,7 @@ import {
 import { decryptPayload } from '@telegram-store/inventory';
 import { Prisma } from '@telegram-store/database';
 import { BlockchainPaymentVerifier } from '@telegram-store/payments';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -29,7 +30,14 @@ if (!BOT_TOKEN || BOT_TOKEN === 'your_telegram_bot_token_here') {
   console.warn('⚠️ TELEGRAM_BOT_TOKEN is not configured in .env yet.');
 }
 
-export const bot = new Bot(BOT_TOKEN || 'dummy_token');
+const proxyUrl = process.env.TELEGRAM_PROXY || process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+const proxyAgent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
+
+export const bot = new Bot(BOT_TOKEN || 'dummy_token', {
+  client: {
+    baseFetchConfig: proxyAgent ? { agent: proxyAgent } : undefined,
+  },
+});
 const verifier = new BlockchainPaymentVerifier();
 
 // In-memory / temporary state storage (or can connect Redis)
@@ -111,7 +119,7 @@ bot.command('start', async (ctx) => {
   }
 
   const welcomeText = t('welcome.title', user.preferredLanguage, {
-    storeName: 'Apex Digital Store',
+    storeName: process.env.STORE_NAME || 'Delux Store',
   });
 
   await ctx.reply(welcomeText, {
@@ -126,7 +134,7 @@ bot.callbackQuery('nav_main', async (ctx) => {
   userStates.delete(user.telegramUserId);
 
   await ctx.editMessageText(
-    t('welcome.title', user.preferredLanguage, { storeName: 'Apex Digital Store' }),
+    t('welcome.title', user.preferredLanguage, { storeName: process.env.STORE_NAME || 'Delux Store' }),
     {
       reply_markup: buildMainMenu(user.preferredLanguage),
     },
@@ -375,17 +383,25 @@ bot.callbackQuery(/^exec_checkout_([^_]+)_(\d+)$/, async (ctx) => {
         const unitPrice = product.salePrice ?? product.normalPrice;
         const totalAmount = new Prisma.Decimal(unitPrice).mul(quantity);
 
-        // Lock inventory rows
-        const availableItems = await tx.$queryRaw<{ id: string; encrypted_payload: string }[]>`
-          SELECT id, encrypted_payload 
-          FROM inventory_items 
-          WHERE product_id = ${product.id}::uuid AND status = 'AVAILABLE'
-          LIMIT ${quantity}
-          FOR UPDATE SKIP LOCKED
-        `;
+        const isManualFulfilment =
+          product.deliverySpeed === 'MANUAL' ||
+          product.deliveryType === 'MANUAL_DELIVERY' ||
+          !product.trackInventory;
 
-        if (availableItems.length < quantity) {
-          throw new Error('Item went out of stock during checkout');
+        // Lock inventory rows only if instant preloaded stock
+        let availableItems: { id: string; encrypted_payload: string }[] = [];
+        if (!isManualFulfilment) {
+          availableItems = await tx.$queryRaw<{ id: string; encrypted_payload: string }[]>`
+            SELECT id, encrypted_payload 
+            FROM inventory_items 
+            WHERE product_id = ${product.id}::uuid AND status = 'AVAILABLE'
+            LIMIT ${quantity}
+            FOR UPDATE SKIP LOCKED
+          `;
+
+          if (availableItems.length < quantity) {
+            throw new Error('Item went out of stock during checkout');
+          }
         }
 
         // Lock wallet
@@ -429,9 +445,9 @@ bot.callbackQuery(/^exec_checkout_([^_]+)_(\d+)$/, async (ctx) => {
             userId: user.id,
             subtotal: totalAmount,
             total: totalAmount,
-            status: OrderStatus.FULFILLED,
+            status: isManualFulfilment ? OrderStatus.PROCESSING : OrderStatus.FULFILLED,
             walletTransactionId: walletTx.id,
-            completedAt: new Date(),
+            completedAt: isManualFulfilment ? null : new Date(),
           },
         });
 
@@ -444,10 +460,11 @@ bot.callbackQuery(/^exec_checkout_([^_]+)_(\d+)$/, async (ctx) => {
             quantity,
             total: totalAmount,
             warrantyDaysSnapshot: product.warrantyDays,
+            status: isManualFulfilment ? 'PROCESSING' : 'COMPLETED',
           },
         });
 
-        // 3. Mark inventory sold & create deliveries
+        // 3. Mark inventory sold & create deliveries if preloaded
         const deliveryList = [];
         for (const item of availableItems) {
           await tx.inventoryItem.update({
@@ -471,12 +488,38 @@ bot.callbackQuery(/^exec_checkout_([^_]+)_(\d+)$/, async (ctx) => {
           deliveryList.push({ ...deliv, rawPayload: item.encrypted_payload });
         }
 
-        return { order, product, deliveryList, quantity, totalAmount };
+        return { order, product, deliveryList, quantity, totalAmount, isManualFulfilment };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
 
-    // Format delivery items for customer
+    if (result.isManualFulfilment) {
+      const pendingMessage =
+        `✅ *Order Received Successfully!*\n\n` +
+        `Order: *#${result.order.orderNumber}*\n` +
+        `Product: *${result.product.name}*\n` +
+        `Quantity: *${result.quantity}*\n` +
+        `Paid: *$${Number(result.totalAmount).toFixed(2)}*\n\n` +
+        `━━━━━━━━━━\n` +
+        `⏳ *Status: Processing Fulfillment*\n\n` +
+        `Our team is preparing your product license/credentials.\n` +
+        `You will receive your delivery directly in this chat shortly!\n\n` +
+        `━━━━━━━━━━\n` +
+        `Warranty: ${result.product.warrantyEnabled ? `${result.product.warrantyDays} days` : 'None'}`;
+
+      const kb = new InlineKeyboard()
+        .text(t('menu.orders', user.preferredLanguage), 'nav_orders')
+        .text(t('menu.main', user.preferredLanguage), 'nav_main');
+
+      await ctx.editMessageText(pendingMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: kb,
+      });
+      await ctx.answerCallbackQuery();
+      return;
+    }
+
+    // Format instant delivery items for customer
     const decryptedLines = result.deliveryList.map((d, idx) => {
       const dec = decryptPayload(d.rawPayload, ENCRYPTION_KEY);
       const content = typeof dec === 'object' ? JSON.stringify(dec, null, 2) : dec;
@@ -756,7 +799,7 @@ bot.callbackQuery(/^set_lang_(.+)$/, async (ctx) => {
 
   await ctx.answerCallbackQuery({ text: 'Language updated!' });
   await ctx.editMessageText(
-    t('welcome.title', langCode, { storeName: 'Apex Digital Store' }),
+    t('welcome.title', langCode, { storeName: process.env.STORE_NAME || 'Delux Store' }),
     { reply_markup: buildMainMenu(langCode) },
   );
 });

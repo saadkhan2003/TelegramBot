@@ -20,6 +20,23 @@ export class DepositsService {
     });
   }
 
+  async getAllNetworksAdmin() {
+    return this.prisma.paymentNetwork.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async updateNetwork(id: string, data: { receivingAddress?: string; minDeposit?: number; isActive?: boolean }) {
+    return this.prisma.paymentNetwork.update({
+      where: { id },
+      data: {
+        ...(data.receivingAddress !== undefined ? { receivingAddress: data.receivingAddress } : {}),
+        ...(data.minDeposit !== undefined ? { minDeposit: data.minDeposit } : {}),
+        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+      },
+    });
+  }
+
   async findAll(params?: {
     userId?: string;
     status?: DepositStatus;

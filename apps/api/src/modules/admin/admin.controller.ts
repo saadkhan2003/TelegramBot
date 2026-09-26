@@ -11,4 +11,14 @@ export class AdminController {
   async getDashboard() {
     return this.adminService.getDashboardMetrics();
   }
+
+  @Get('notifications')
+  async getNotifications() {
+    return this.adminService.getNotifications();
+  }
+
+  @Get('bot/status')
+  async getBotStatus() {
+    return this.adminService.getBotStatus();
+  }
 }

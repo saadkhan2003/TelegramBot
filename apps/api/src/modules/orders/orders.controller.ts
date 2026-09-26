@@ -45,4 +45,19 @@ export class OrdersController {
       adminId: req.admin.sub,
     });
   }
+
+  @Post(':id/fulfill')
+  @RequirePermissions('orders.view')
+  async fulfillOrder(
+    @Param('id') id: string,
+    @Body() body: { payload: string; notes?: string },
+    @Req() req: any,
+  ) {
+    return this.ordersService.fulfillManualOrder({
+      orderId: id,
+      deliveryPayload: body.payload,
+      notes: body.notes,
+      adminId: req.admin.sub,
+    });
+  }
 }

@@ -2,7 +2,9 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../../common/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
 import {
+  DeliverySpeed,
   DeliveryStatus,
+  DeliveryType,
   generateOrderNumber,
   InventoryStatus,
   OrderStatus,
@@ -11,7 +13,7 @@ import {
   WalletTxType,
 } from '@telegram-store/shared';
 import { Prisma } from '@telegram-store/database';
-import { decryptPayload } from '@telegram-store/inventory';
+import { decryptPayload, encryptPayload } from '@telegram-store/inventory';
 
 @Injectable()
 export class OrdersService {
@@ -123,9 +125,14 @@ export class OrdersService {
         const unitPrice = product.salePrice ?? product.normalPrice;
         const totalAmount = new Prisma.Decimal(unitPrice).mul(params.quantity);
 
-        // 2. Lock required inventory rows using FOR UPDATE SKIP LOCKED
+        const isManualFulfilment =
+          product.deliverySpeed === DeliverySpeed.MANUAL ||
+          product.deliveryType === DeliveryType.MANUAL_DELIVERY ||
+          !product.trackInventory;
+
+        // 2. Lock required inventory rows if instant & track inventory
         let availableInventory: { id: string; encrypted_payload: string }[] = [];
-        if (product.trackInventory) {
+        if (product.trackInventory && !isManualFulfilment) {
           availableInventory = await tx.$queryRaw<
             { id: string; encrypted_payload: string }[]
           >`
@@ -169,9 +176,9 @@ export class OrdersService {
             subtotal: totalAmount,
             discount: 0,
             total: totalAmount,
-            status: OrderStatus.FULFILLED,
+            status: isManualFulfilment ? OrderStatus.PROCESSING : OrderStatus.FULFILLED,
             walletTransactionId: debitTx.id,
-            completedAt: new Date(),
+            completedAt: isManualFulfilment ? null : new Date(),
           },
         });
 
@@ -184,13 +191,13 @@ export class OrdersService {
             quantity: params.quantity,
             total: totalAmount,
             warrantyDaysSnapshot: product.warrantyDays,
-            status: 'COMPLETED',
+            status: isManualFulfilment ? 'PROCESSING' : 'COMPLETED',
           },
         });
 
-        // 5. Mark Inventory as SOLD & Create Delivery records
+        // 5. Mark Inventory as SOLD & Create Delivery records if instant
         const deliveries = [];
-        if (product.trackInventory && availableInventory.length > 0) {
+        if (availableInventory.length > 0) {
           for (const item of availableInventory) {
             await tx.inventoryItem.update({
               where: { id: item.id },
@@ -326,6 +333,71 @@ export class OrdersService {
       });
 
       return refund;
+    });
+  }
+
+  /**
+   * Admin manual fulfillment: Admin buys license/account from wholesaler, pastes it here, and delivers to customer
+   */
+  async fulfillManualOrder(params: {
+    orderId: string;
+    deliveryPayload: string;
+    notes?: string;
+    adminId: string;
+  }) {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: params.orderId },
+        include: { items: { include: { product: true } }, user: true },
+      });
+
+      if (!order) throw new NotFoundException('Order not found');
+      if (order.status !== OrderStatus.PROCESSING && order.status !== OrderStatus.PENDING) {
+        throw new BadRequestException(`Order cannot be fulfilled in status ${order.status}`);
+      }
+
+      const encrypted = encryptPayload(params.deliveryPayload, this.encryptionKey);
+
+      // Create delivery record for first order item
+      const orderItem = order.items[0];
+      if (orderItem) {
+        await tx.delivery.create({
+          data: {
+            orderItemId: orderItem.id,
+            encryptedDeliveryPayload: encrypted,
+            deliveryMethod: 'ADMIN_MANUAL_DELIVERY',
+            status: DeliveryStatus.DELIVERED,
+            deliveredAt: new Date(),
+          },
+        });
+      }
+
+      const updated = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: OrderStatus.FULFILLED,
+          completedAt: new Date(),
+        },
+        include: { user: true, items: true },
+      });
+
+      // Audit log
+      await tx.auditLog.create({
+        data: {
+          adminId: params.adminId,
+          action: 'MANUAL_ORDER_FULFILMENT',
+          resourceType: 'orders',
+          resourceId: order.id,
+          afterData: { orderNumber: order.orderNumber, deliveredAt: new Date() },
+        },
+      });
+
+      return {
+        order: updated,
+        customerTelegramId: order.user.telegramUserId.toString(),
+        productName: orderItem?.productNameSnapshot,
+        deliveredPayload: params.deliveryPayload,
+      };
     });
   }
 }

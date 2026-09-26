@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { DepositsService } from './deposits.service';
 import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
 import { DepositStatus } from '@telegram-store/shared';
@@ -7,6 +7,21 @@ import { DepositStatus } from '@telegram-store/shared';
 @UseGuards(AdminAuthGuard)
 export class DepositsController {
   constructor(private readonly depositsService: DepositsService) {}
+
+  @Get('networks')
+  @RequirePermissions('deposits.view')
+  async getNetworks() {
+    return this.depositsService.getAllNetworksAdmin();
+  }
+
+  @Patch('networks/:id')
+  @RequirePermissions('deposits.override')
+  async updateNetwork(
+    @Param('id') id: string,
+    @Body() body: { receivingAddress?: string; minDeposit?: number; isActive?: boolean },
+  ) {
+    return this.depositsService.updateNetwork(id, body);
+  }
 
   @Get()
   @RequirePermissions('deposits.view')
