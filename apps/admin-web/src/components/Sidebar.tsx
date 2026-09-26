@@ -119,43 +119,36 @@ export default function Sidebar() {
 
         {/* User / Operator Row: Structured Enterprise Identity Card */}
         <div className="p-3 border-t border-[#edebe9] bg-[#faf9f8]">
-          <div className="p-2.5 rounded-[4px] bg-white border border-[#edebe9] shadow-2xs space-y-2">
-            {/* Top row: Avatar + Name + Admin Badge + Logout Button */}
-            <div className="flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="relative shrink-0">
-                  <div className="h-7 w-7 rounded-[4px] bg-[#eff6fc] border border-[#c7e0f4] flex items-center justify-center text-[#0078d4]">
-                    <UserCheck className="h-3.5 w-3.5" />
-                  </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#107c10] border-2 border-white" />
+          <div className="p-2.5 rounded-[6px] bg-white border border-[#edebe9] shadow-2xs space-y-2">
+            <div className="flex items-center gap-2.5">
+              <div className="relative shrink-0">
+                <div className="h-8 w-8 rounded-full bg-linear-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-[11px] tracking-wider shadow-xs">
+                  {user?.name ? user.name.slice(0, 2).toUpperCase() : 'AD'}
                 </div>
-                <p className="text-xs font-bold text-[#201f1e] truncate" title={user?.name || user?.email || 'Admin'}>
-                  {user?.name || user?.email?.split('@')[0] || 'Admin'}
-                </p>
+                <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#107c10] border-2 border-white" />
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold bg-[#eff6fc] text-[#0078d4] border border-[#c7e0f4] rounded-[2px] uppercase">
-                  {user?.roles?.[0] || 'ADMIN'}
-                </span>
-                <button
-                  onClick={logout}
-                  title="Sign out of console"
-                  className="p-1 rounded-[3px] text-[#8a8886] hover:text-[#d13438] hover:bg-[#fde7e9] transition"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                </button>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1">
+                  <p className="text-xs font-bold text-[#201f1e] truncate" title={user?.name || user?.email || 'Admin'}>
+                    {user?.name || user?.email?.split('@')[0] || 'Admin'}
+                  </p>
+                  <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-bold bg-[#eff6fc] text-[#0078d4] border border-[#c7e0f4] rounded-[2px] uppercase shrink-0">
+                    {user?.roles?.[0] || 'OWNER'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-[#605e5c] truncate mt-0.5" title={user?.email || ''}>
+                  {user?.email || 'admin@deluxstore.com'}
+                </p>
               </div>
             </div>
 
-            {/* Bottom row: Account email and status */}
-            <div className="flex items-center justify-between text-[10px] text-[#605e5c] pt-1.5 border-t border-[#f3f2f1]">
-              <span className="truncate max-w-[145px]" title={user?.email || ''}>
-                {user?.email || 'admin@deluxstore.com'}
-              </span>
-              <span className="text-[#107c10] font-semibold shrink-0 text-[9px] uppercase tracking-wider">
-                Active
-              </span>
-            </div>
+            <button
+              onClick={logout}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-[4px] border border-[#edebe9] bg-[#faf9f8] hover:bg-[#fde7e9] hover:border-[#f8d2d4] text-[#605e5c] hover:text-[#d13438] text-[11px] font-medium transition"
+            >
+              <LogOut className="h-3 w-3" />
+              <span>Sign Out</span>
+            </button>
           </div>
         </div>
       </aside>

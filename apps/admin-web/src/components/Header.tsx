@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -14,6 +15,12 @@ import {
   X,
   Menu,
   LogOut,
+  ChevronDown,
+  Settings,
+  Users,
+  Bot,
+  Shield,
+  UserCheck,
 } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 import { useNavigation } from '../context/NavigationContext';
@@ -24,9 +31,11 @@ export default function Header() {
   const { toggleMobileMenu } = useNavigation();
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const loadNotifications = () => {
     fetchApi('/admin/notifications')
@@ -45,18 +54,29 @@ export default function Header() {
     return () => clearInterval(timer);
   }, []);
 
-  // Close on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
     }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  }, []);
+
+  const getInitials = (name?: string, email?: string) => {
+    if (name) {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      return name.slice(0, 2).toUpperCase();
+    }
+    if (email) return email.slice(0, 2).toUpperCase();
+    return 'AD';
+  };
 
   const activeNotifications = notifications.filter((n) => !dismissedIds.has(n.id));
   const unreadCount = activeNotifications.length;
@@ -243,23 +263,139 @@ export default function Header() {
           )}
         </div>
 
-        {/* User Quick Profile & Logout Button */}
-        <div className="flex items-center gap-2 pl-2 border-l border-[#edebe9]">
-          <div className="hidden sm:flex flex-col text-right">
-            <span className="text-xs font-bold text-[#201f1e] leading-tight truncate max-w-[120px]">
-              {user?.name || user?.email?.split('@')[0] || 'Admin'}
-            </span>
-            <span className="text-[10px] text-[#605e5c] font-medium leading-tight">
-              {user?.roles?.[0] || 'ADMIN'}
-            </span>
-          </div>
+        {/* Enterprise User Profile Dropdown */}
+        <div className="relative pl-2 border-l border-[#edebe9]" ref={profileRef}>
           <button
-            onClick={logout}
-            title="Sign Out"
-            className="p-1.5 rounded-[4px] text-[#605e5c] hover:text-[#d13438] hover:bg-[#fde7e9] transition"
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className={`flex items-center gap-2 px-2 py-1 rounded-[6px] transition-all border ${
+              isProfileOpen
+                ? 'bg-[#eff6fc] border-[#c7e0f4] shadow-xs'
+                : 'border-transparent hover:bg-[#faf9f8] hover:border-[#edebe9]'
+            }`}
           >
-            <LogOut className="h-4 w-4" />
+            <div className="relative shrink-0">
+              <div className="h-7 w-7 rounded-full bg-linear-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-[11px] shadow-xs tracking-wider">
+                {getInitials(user?.name, user?.email)}
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#107c10] border-2 border-white ring-1 ring-[#107c10]/20" />
+            </div>
+
+            <div className="hidden sm:flex flex-col text-left">
+              <span className="text-xs font-bold text-[#201f1e] leading-tight truncate max-w-[120px]">
+                {user?.name || user?.email?.split('@')[0] || 'Admin'}
+              </span>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-[#0078d4] font-semibold leading-tight uppercase tracking-wider">
+                  {user?.roles?.[0] || 'OWNER'}
+                </span>
+                <ChevronDown
+                  className={`h-3 w-3 text-[#8a8886] transition-transform duration-200 ${
+                    isProfileOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </div>
+            </div>
           </button>
+
+          {isProfileOpen && (
+            <div className="absolute right-0 mt-2 w-72 bg-white rounded-[8px] shadow-fluentModal border border-[#edebe9] z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden divide-y divide-[#edebe9]">
+              {/* Profile Card Header */}
+              <div className="p-3.5 bg-linear-to-b from-[#faf9f8] to-white">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-linear-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-xs shadow-sm tracking-wider shrink-0">
+                    {getInitials(user?.name, user?.email)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-[#201f1e] truncate">
+                        {user?.name || user?.email?.split('@')[0] || 'Administrator'}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-[#605e5c] truncate mt-0.5">
+                      {user?.email || 'admin@deluxstore.com'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="px-1.5 py-0.2 rounded-[2px] bg-[#eff6fc] border border-[#c7e0f4] text-[#0078d4] text-[9px] font-bold uppercase tracking-wider">
+                        {user?.roles?.[0] || 'OWNER'}
+                      </span>
+                      <span className="flex items-center gap-1 text-[10px] font-medium text-[#107c10]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#107c10]" />
+                        Active Session
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Navigation Links */}
+              <div className="p-1.5 space-y-0.5">
+                <Link
+                  href="/settings"
+                  onClick={() => setIsProfileOpen(false)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[4px] text-xs font-medium text-[#201f1e] hover:bg-[#f3f2f1] transition text-left"
+                >
+                  <Settings className="h-4 w-4 text-[#0078d4]" />
+                  <div className="flex-1">
+                    <span className="font-semibold">Store Configuration</span>
+                    <span className="block text-[10px] text-[#8a8886] font-normal">Branding, wallets & rules</span>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/settings"
+                  onClick={() => setIsProfileOpen(false)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[4px] text-xs font-medium text-[#201f1e] hover:bg-[#f3f2f1] transition text-left"
+                >
+                  <Users className="h-4 w-4 text-[#107c10]" />
+                  <div className="flex-1">
+                    <span className="font-semibold">Team Members & Staff</span>
+                    <span className="block text-[10px] text-[#8a8886] font-normal">Manage friend accounts</span>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/settings"
+                  onClick={() => setIsProfileOpen(false)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[4px] text-xs font-medium text-[#201f1e] hover:bg-[#f3f2f1] transition text-left"
+                >
+                  <Bot className="h-4 w-4 text-[#8a3707]" />
+                  <div className="flex-1">
+                    <span className="font-semibold">Store & Bot Fleet</span>
+                    <span className="block text-[10px] text-[#8a8886] font-normal">Tokens & bot runners</span>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/settings"
+                  onClick={() => setIsProfileOpen(false)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[4px] text-xs font-medium text-[#201f1e] hover:bg-[#f3f2f1] transition text-left"
+                >
+                  <Shield className="h-4 w-4 text-[#605e5c]" />
+                  <div className="flex-1">
+                    <span className="font-semibold">Security & Audit Logs</span>
+                    <span className="block text-[10px] text-[#8a8886] font-normal">View admin session trails</span>
+                  </div>
+                </Link>
+              </div>
+
+              {/* Logout Action */}
+              <div className="p-1.5 bg-[#faf9f8]">
+                <button
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[4px] text-xs font-semibold text-[#d13438] hover:bg-[#fde7e9] transition text-left"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <div className="flex-1">
+                    <span>Sign Out of Console</span>
+                    <span className="block text-[10px] text-[#a4262c]/80 font-normal">End your session securely</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
