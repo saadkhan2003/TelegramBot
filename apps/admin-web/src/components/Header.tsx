@@ -13,13 +13,16 @@ import {
   Check,
   X,
   Menu,
+  LogOut,
 } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 import { useNavigation } from '../context/NavigationContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Header() {
   const router = useRouter();
   const { toggleMobileMenu } = useNavigation();
+  const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -238,6 +241,25 @@ export default function Header() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* User Quick Profile & Logout Button */}
+        <div className="flex items-center gap-2 pl-2 border-l border-[#edebe9]">
+          <div className="hidden sm:flex flex-col text-right">
+            <span className="text-xs font-bold text-[#201f1e] leading-tight truncate max-w-[120px]">
+              {user?.name || user?.email?.split('@')[0] || 'Admin'}
+            </span>
+            <span className="text-[10px] text-[#605e5c] font-medium leading-tight">
+              {user?.roles?.[0] || 'ADMIN'}
+            </span>
+          </div>
+          <button
+            onClick={logout}
+            title="Sign Out"
+            className="p-1.5 rounded-[4px] text-[#605e5c] hover:text-[#d13438] hover:bg-[#fde7e9] transition"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </header>

@@ -16,8 +16,10 @@ import {
   ChevronsUpDown,
   UserCheck,
   X,
+  LogOut,
 } from 'lucide-react';
 import { useNavigation } from '../context/NavigationContext';
+import { useAuth } from '../context/AuthContext';
 
 const navigationGroups = [
   {
@@ -49,6 +51,7 @@ const navigationGroups = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { isMobileMenuOpen, closeMobileMenu } = useNavigation();
+  const { user, logout } = useAuth();
 
   return (
     <>
@@ -143,8 +146,8 @@ export default function Sidebar() {
         {/* User / Operator Row: Structured Enterprise Identity Card */}
         <div className="p-3 border-t border-[#edebe9] bg-[#faf9f8]">
           <div className="p-2.5 rounded-[4px] bg-white border border-[#edebe9] shadow-2xs space-y-2">
-            {/* Top row: Avatar + Name + Admin Badge */}
-            <div className="flex items-center justify-between gap-2">
+            {/* Top row: Avatar + Name + Admin Badge + Logout Button */}
+            <div className="flex items-center justify-between gap-1.5">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="relative shrink-0">
                   <div className="h-7 w-7 rounded-[4px] bg-[#eff6fc] border border-[#c7e0f4] flex items-center justify-center text-[#0078d4]">
@@ -152,18 +155,28 @@ export default function Sidebar() {
                   </div>
                   <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#107c10] border-2 border-white" />
                 </div>
-                <p className="text-xs font-bold text-[#201f1e] truncate">M. Saad</p>
+                <p className="text-xs font-bold text-[#201f1e] truncate" title={user?.name || user?.email || 'Admin'}>
+                  {user?.name || user?.email?.split('@')[0] || 'Admin'}
+                </p>
               </div>
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold bg-[#eff6fc] text-[#0078d4] border border-[#c7e0f4] rounded-[2px] shrink-0">
-                <ShieldCheck className="h-2.5 w-2.5" />
-                ADMIN
-              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold bg-[#eff6fc] text-[#0078d4] border border-[#c7e0f4] rounded-[2px] uppercase">
+                  {user?.roles?.[0] || 'ADMIN'}
+                </span>
+                <button
+                  onClick={logout}
+                  title="Sign out of console"
+                  className="p-1 rounded-[3px] text-[#8a8886] hover:text-[#d13438] hover:bg-[#fde7e9] transition"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* Bottom row: Account email and status */}
             <div className="flex items-center justify-between text-[10px] text-[#605e5c] pt-1.5 border-t border-[#f3f2f1]">
-              <span className="truncate max-w-[145px]" title="msaad.official6@gmail.com">
-                msaad.official6@gmail.com
+              <span className="truncate max-w-[145px]" title={user?.email || ''}>
+                {user?.email || 'admin@deluxstore.com'}
               </span>
               <span className="text-[#107c10] font-semibold shrink-0 text-[9px] uppercase tracking-wider">
                 Active

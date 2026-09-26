@@ -47,6 +47,7 @@ export class AuthService {
     return {
       id: admin.id,
       email: admin.email,
+      name: admin.name || admin.email.split('@')[0],
       roles: admin.adminRoles.map((ar) => ar.role.slug),
       permissions: Array.from(permissions),
     };
@@ -61,6 +62,7 @@ export class AuthService {
     const payload = {
       sub: admin.id,
       email: admin.email,
+      name: admin.name,
       roles: admin.roles,
       permissions: admin.permissions,
     };
@@ -83,6 +85,7 @@ export class AuthService {
       admin: {
         id: admin.id,
         email: admin.email,
+        name: admin.name,
         roles: admin.roles,
         permissions: admin.permissions,
       },
@@ -121,9 +124,21 @@ export class AuthService {
     return {
       id: admin.id,
       email: admin.email,
+      name: admin.name || admin.email.split('@')[0],
       roles: admin.adminRoles.map((ar) => ar.role.slug),
       permissions: Array.from(permissions),
       createdAt: admin.createdAt,
     };
+  }
+
+  async logout(adminId: string, token?: string) {
+    if (token) {
+      const tokenHash = token.slice(-32);
+      await this.prisma.adminSession.updateMany({
+        where: { adminId, tokenHash },
+        data: { revokedAt: new Date() },
+      });
+    }
+    return { success: true, message: 'Logged out successfully' };
   }
 }

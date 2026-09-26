@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
-import MobileBottomBar from '../components/MobileBottomBar';
-import PwaProvider from '../components/PwaProvider';
-import { NavigationProvider } from '../context/NavigationContext';
+import { AuthProvider } from '../context/AuthContext';
+import AdminShell from '../components/AdminShell';
 
 export const viewport: Viewport = {
   themeColor: '#0078d4',
@@ -53,20 +50,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
       <body className="bg-[#f3f2f1] text-[#201f1e] min-h-screen font-sans antialiased selection:bg-[#0078d4]/10 selection:text-[#0078d4]">
-        <NavigationProvider>
-          <PwaProvider>
-            <div className="flex min-h-screen w-full relative">
-              <Sidebar />
-              <div className="flex-1 lg:pl-64 flex flex-col min-h-screen w-full pb-16 lg:pb-0">
-                <Header />
-                <main className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto">
-                  {children}
-                </main>
-              </div>
-              <MobileBottomBar />
-            </div>
-          </PwaProvider>
-        </NavigationProvider>
+        <AuthProvider>
+          <AdminShell>{children}</AdminShell>
+        </AuthProvider>
       </body>
     </html>
   );

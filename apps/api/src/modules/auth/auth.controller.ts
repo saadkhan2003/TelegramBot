@@ -21,4 +21,12 @@ export class AuthController {
   async getProfile(@Req() req: any) {
     return this.authService.getProfile(req.admin.sub);
   }
+
+  @UseGuards(AdminAuthGuard)
+  @Post('logout')
+  async logout(@Req() req: any) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+    return this.authService.logout(req.admin.sub, token);
+  }
 }

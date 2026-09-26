@@ -98,6 +98,61 @@ async function main() {
     });
   }
 
+  // Administrator role (Full operational admin)
+  const adminRole = await prisma.role.upsert({
+    where: { slug: 'ADMIN' },
+    update: { name: 'Administrator' },
+    create: {
+      name: 'Administrator',
+      slug: 'ADMIN',
+      description: 'Store operations and catalog administration',
+    },
+  });
+
+  for (const perm of allPermissions) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: adminRole.id,
+          permissionId: perm.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: adminRole.id,
+        permissionId: perm.id,
+      },
+    });
+  }
+
+  // Manager role
+  const managerRole = await prisma.role.upsert({
+    where: { slug: 'MANAGER' },
+    update: { name: 'Store Manager' },
+    create: {
+      name: 'Store Manager',
+      slug: 'MANAGER',
+      description: 'Products, inventory, and order fulfilment',
+    },
+  });
+
+  const managerPermSlugs = ['orders.view', 'orders.manage', 'products.view', 'products.create', 'products.edit', 'inventory.view', 'inventory.create'];
+  for (const perm of allPermissions.filter((p) => managerPermSlugs.includes(p.slug))) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: managerRole.id,
+          permissionId: perm.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: managerRole.id,
+        permissionId: perm.id,
+      },
+    });
+  }
+
   // 2. Default Admin User
   const defaultEmail = process.env.ADMIN_DEFAULT_EMAIL || 'admin@store.local';
   const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'AdminSecurePass123!';
@@ -105,9 +160,10 @@ async function main() {
 
   const admin = await prisma.admin.upsert({
     where: { email: defaultEmail },
-    update: { passwordHash: hashedPassword },
+    update: { name: 'M. Saad', passwordHash: hashedPassword },
     create: {
       email: defaultEmail,
+      name: 'M. Saad',
       passwordHash: hashedPassword,
     },
   });

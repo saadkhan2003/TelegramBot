@@ -30,10 +30,11 @@ import {
   Coins,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
+import TeamManagement from '../../components/TeamManagement';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<
-    'branding' | 'wallets' | 'fulfillment' | 'referrals' | 'bot' | 'audit'
+    'branding' | 'wallets' | 'fulfillment' | 'referrals' | 'bot' | 'audit' | 'team'
   >('branding');
 
   const [settings, setSettings] = useState<any[]>([]);
@@ -478,6 +479,7 @@ export default function SettingsPage() {
     { id: 'fulfillment', label: 'Wholesaler & Fulfillment', icon: Layers },
     { id: 'referrals', label: 'Referrals & Commission', icon: Users },
     { id: 'bot', label: 'Telegram Bot Controls', icon: Bot },
+    { id: 'team', label: 'Team Members & Staff', icon: Users },
     { id: 'audit', label: 'Security & Audit Logs', icon: Shield },
   ];
 
@@ -1785,6 +1787,9 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* TAB: Team Members & Staff */}
+      {activeTab === 'team' && <TeamManagement />}
 
       {/* Floating Save Confirmation / Alert Toast */}
       {toast && (
