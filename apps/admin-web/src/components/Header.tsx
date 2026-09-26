@@ -274,10 +274,9 @@ export default function Header() {
             }`}
           >
             <div className="relative shrink-0">
-              <div className="h-7 w-7 rounded-full bg-linear-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-[11px] shadow-xs tracking-wider">
+              <div className="h-7 w-7 rounded-full bg-[#0078d4] bg-gradient-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-[11px] shadow-xs tracking-wider">
                 {getInitials(user?.name, user?.email)}
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#107c10] border-2 border-white ring-1 ring-[#107c10]/20" />
             </div>
 
             <div className="hidden sm:flex flex-col text-left">
@@ -300,9 +299,9 @@ export default function Header() {
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-72 bg-white rounded-[8px] shadow-fluentModal border border-[#edebe9] z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden divide-y divide-[#edebe9]">
               {/* Profile Card Header */}
-              <div className="p-3.5 bg-linear-to-b from-[#faf9f8] to-white">
+              <div className="p-3.5 bg-gradient-to-b from-[#faf9f8] to-white">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-linear-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-xs shadow-sm tracking-wider shrink-0">
+                  <div className="h-10 w-10 rounded-full bg-[#0078d4] bg-gradient-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-xs shadow-sm tracking-wider shrink-0 ring-2 ring-[#c7e0f4]/50">
                     {getInitials(user?.name, user?.email)}
                   </div>
                   <div className="min-w-0 flex-1">

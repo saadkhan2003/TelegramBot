@@ -122,7 +122,7 @@ export default function Sidebar() {
           <div className="p-2.5 rounded-[6px] bg-white border border-[#edebe9] shadow-2xs space-y-2">
             <div className="flex items-center gap-2.5">
               <div className="relative shrink-0">
-                <div className="h-8 w-8 rounded-full bg-linear-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-[11px] tracking-wider shadow-xs">
+                <div className="h-8 w-8 rounded-full bg-[#0078d4] bg-gradient-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-[11px] tracking-wider shadow-xs">
                   {user?.name ? user.name.slice(0, 2).toUpperCase() : 'AD'}
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#107c10] border-2 border-white" />
