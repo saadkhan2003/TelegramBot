@@ -1,8 +1,24 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+export function getApiBase(): string {
+  if (typeof window !== 'undefined') {
+    const envUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (envUrl && !envUrl.includes('localhost')) {
+      return envUrl;
+    }
+    const { hostname, port, protocol } = window.location;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      if (port === '3001') {
+        return `${protocol}//${hostname}:4000/api/v1`;
+      }
+      return '/api/v1';
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+}
 
 async function autoLogin(): Promise<string | null> {
   try {
-    const res = await fetch(`${API_BASE}/admin/auth/login`, {
+    const base = getApiBase();
+    const res = await fetch(`${base}/admin/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -43,7 +59,8 @@ export async function fetchApi<T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const base = getApiBase();
+  const res = await fetch(`${base}${path}`, {
     ...options,
     headers,
   });
