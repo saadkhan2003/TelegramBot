@@ -36,6 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
     const savedToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
     const savedUser = typeof window !== 'undefined' ? localStorage.getItem('admin_user') : null;
 
@@ -53,8 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const base = getApiBase();
       fetch(`${base}/admin/auth/me`, {
         headers: { Authorization: `Bearer ${savedToken}` },
+        signal: controller.signal,
       })
         .then(async (res) => {
+          if (!isMounted) return;
           if (res.ok) {
             const data = await res.json();
             setUser(data);
@@ -66,22 +72,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             setToken(null);
             if (pathname !== '/login') {
-              router.push('/login');
+              router.replace('/login');
             }
           }
         })
         .catch(() => {
-          // If offline / network error, retain local state
+          // If offline / network error / timeout, retain local state if user was parsed, otherwise redirect
+          if (!isMounted) return;
+          if (!savedUser && pathname !== '/login') {
+            router.replace('/login');
+          }
         })
         .finally(() => {
-          setLoading(false);
+          if (isMounted) setLoading(false);
+          clearTimeout(timeoutId);
         });
     } else {
       setLoading(false);
+      clearTimeout(timeoutId);
       if (pathname !== '/login') {
-        router.push('/login');
+        router.replace('/login');
       }
     }
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
   }, [pathname, router]);
 
   const login = async (email: string, pass: string) => {

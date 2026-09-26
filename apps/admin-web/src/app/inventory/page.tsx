@@ -15,6 +15,7 @@ import {
   Loader2,
   X,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
 
@@ -29,6 +30,11 @@ export default function InventoryPage() {
   const [selectedProductFilter, setSelectedProductFilter] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Bulk Import state
   const [showImportModal, setShowImportModal] = useState(false);
@@ -175,6 +181,43 @@ export default function InventoryPage() {
     return prodName.includes(query) || unitId.includes(query);
   });
 
+  // Selection helpers
+  const allFilteredSelected = filteredItems.length > 0 && filteredItems.every((i) => selectedIds.has(i.id));
+  const someFilteredSelected = filteredItems.some((i) => selectedIds.has(i.id));
+
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredItems.map((i) => i.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await Promise.all(ids.map((id) => fetchApi(`/admin/inventory/${id}`, { method: 'DELETE' })));
+      showToast(`✓ ${ids.length} inventory item(s) deleted successfully!`);
+      setSelectedIds(new Set());
+      setShowBulkDeleteConfirm(false);
+      loadData();
+    } catch (err: any) {
+      showToast(`Bulk delete failed: ${err.message}`, 'error');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl pb-12">
       {/* Header */}
@@ -239,18 +282,53 @@ export default function InventoryPage() {
         </select>
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between bg-[#eff6fc] border border-[#c7e0f4] rounded-[4px] px-4 py-2.5 shadow-sm animate-in slide-in-from-top-1 duration-150">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-[#0078d4]">
+              {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
+            </span>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-[11px] text-[#605e5c] hover:text-[#201f1e] underline underline-offset-2"
+            >
+              Clear selection
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowBulkDeleteConfirm(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] bg-[#a4262c] hover:bg-[#8b2025] text-white text-xs font-semibold shadow-xs transition"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Selected
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Inventory Items Table */}
       <div className="bg-white border border-[#edebe9] rounded-[4px] overflow-x-auto shadow-sm">
         <table className="w-full text-left text-xs min-w-[700px]">
           <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
             <tr>
-              <th className="px-6 py-3 font-semibold">Product</th>
-              <th className="px-6 py-3 font-semibold">Unit ID</th>
-              <th className="px-6 py-3 font-semibold">Wholesale Cost</th>
-              <th className="px-6 py-3 font-semibold">Status</th>
-              <th className="px-6 py-3 font-semibold">Decrypted / Stored Payload</th>
-              <th className="px-6 py-3 font-semibold">Added Date</th>
-              <th className="px-6 py-3 font-semibold text-right">Actions</th>
+              <th className="px-3 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  ref={(el) => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected; }}
+                  onChange={toggleSelectAll}
+                  className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]"
+                />
+              </th>
+              <th className="px-4 py-3 font-semibold">Product</th>
+              <th className="px-4 py-3 font-semibold">Unit ID</th>
+              <th className="px-4 py-3 font-semibold">Wholesale Cost</th>
+              <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-4 py-3 font-semibold">Decrypted / Stored Payload</th>
+              <th className="px-4 py-3 font-semibold">Added Date</th>
+              <th className="px-4 py-3 font-semibold text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
@@ -260,8 +338,16 @@ export default function InventoryPage() {
                 const credString = cred ? (typeof cred === 'object' ? JSON.stringify(cred) : String(cred)) : '';
 
                 return (
-                  <tr key={item.id} className="hover:bg-[#faf9f8] transition">
-                    <td className="px-6 py-4 font-semibold text-[#201f1e]">
+                  <tr key={item.id} className={`hover:bg-[#faf9f8] transition ${selectedIds.has(item.id) ? 'bg-[#eff6fc]' : ''}`}>
+                    <td className="px-3 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => toggleSelect(item.id)}
+                        className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]"
+                      />
+                    </td>
+                    <td className="px-4 py-4 font-semibold text-[#201f1e]">
                       <div className="flex items-center gap-2">
                         <div className="p-1 rounded-[3px] bg-[#eff6fc] border border-[#c7e0f4] text-[#0078d4]">
                           <KeyRound className="h-3.5 w-3.5" />
@@ -269,10 +355,10 @@ export default function InventoryPage() {
                         <span>{item.product?.name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-mono text-[11px] text-[#0078d4]">
+                    <td className="px-4 py-4 font-mono text-[11px] text-[#0078d4]">
                       {item.id.slice(0, 8)}...
                     </td>
-                    <td className="px-6 py-4 text-[#605e5c]">
+                    <td className="px-4 py-4 text-[#605e5c]">
                       <div className="flex items-center gap-1.5 group">
                         <span className="font-medium text-[#201f1e]">
                           {item.purchaseCost ? `$${Number(item.purchaseCost).toFixed(2)}` : '—'}
@@ -290,7 +376,7 @@ export default function InventoryPage() {
                         </button>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <span
                         className={`inline-flex px-2 py-0.5 rounded-[2px] text-[11px] font-semibold border ${
                           item.status === 'AVAILABLE'
@@ -303,7 +389,7 @@ export default function InventoryPage() {
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-mono text-[11px] max-w-xs">
+                    <td className="px-4 py-4 font-mono text-[11px] max-w-xs">
                       {cred ? (
                         <div className="flex items-center gap-2">
                           <span className="text-[#107c10] bg-[#dff6dd] border border-[#a8e5a3] px-2 py-1 rounded-[2px] truncate max-w-[200px]">
@@ -325,26 +411,28 @@ export default function InventoryPage() {
                         <span className="text-[#8a8886] truncate block">{item.encryptedPayload}</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-[#605e5c] text-[11px]">
+                    <td className="px-4 py-4 text-[#605e5c] text-[11px]">
                       {item.createdAt ? item.createdAt.slice(0, 10) : '—'}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      {!cred && (
-                        <button
-                          onClick={() => handleReveal(item.id)}
-                          className="px-2.5 py-1 rounded-[4px] bg-white border border-[#d2d0ce] hover:bg-[#f3f2f1] text-[#201f1e] text-[11px] font-medium inline-flex items-center gap-1 shadow-xs transition"
-                        >
-                          <Eye className="h-3 w-3 text-[#0078d4]" />
-                          <span>Reveal</span>
-                        </button>
-                      )}
+                    <td className="px-4 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {!cred && (
+                          <button
+                            onClick={() => handleReveal(item.id)}
+                            className="px-2.5 py-1 rounded-[4px] bg-white border border-[#d2d0ce] hover:bg-[#f3f2f1] text-[#201f1e] text-[11px] font-medium inline-flex items-center gap-1 shadow-xs transition"
+                          >
+                            <Eye className="h-3 w-3 text-[#0078d4]" />
+                            <span>Reveal</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-[#605e5c]">
+                <td colSpan={8} className="px-6 py-8 text-center text-[#605e5c]">
                   No inventory units match your search or filter selection.
                 </td>
               </tr>
@@ -572,6 +660,50 @@ export default function InventoryPage() {
               >
                 {updatingCost && <Loader2 className="h-3 w-3 animate-spin" />}
                 <span>Save Wholesale Rate</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-[#edebe9] rounded-[4px] p-5 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+            <div className="border-b border-[#edebe9] pb-2.5 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-[#a4262c]">Confirm Bulk Delete</h3>
+                <p className="text-[11px] text-[#605e5c] mt-0.5">
+                  This will permanently remove {selectedIds.size} inventory item{selectedIds.size > 1 ? 's' : ''}.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowBulkDeleteConfirm(false)}
+                className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-3 rounded-[4px] bg-[#fde7e9] border border-[#f8d2d4] text-xs text-[#a4262c]">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <p>This action cannot be undone. All encrypted credential payloads will be permanently destroyed.</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#edebe9]">
+              <button
+                onClick={() => setShowBulkDeleteConfirm(false)}
+                className="px-3 py-1.5 rounded-[4px] border border-[#d2d0ce] hover:bg-[#f3f2f1] text-[#605e5c] text-xs font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+                className="px-3.5 py-1.5 rounded-[4px] bg-[#a4262c] hover:bg-[#8b2025] text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5"
+              >
+                {bulkDeleting && <Loader2 className="h-3 w-3 animate-spin" />}
+                <span>{bulkDeleting ? 'Deleting...' : `Delete ${selectedIds.size} Item${selectedIds.size > 1 ? 's' : ''}`}</span>
               </button>
             </div>
           </div>

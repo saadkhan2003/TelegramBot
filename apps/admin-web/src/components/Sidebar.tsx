@@ -19,6 +19,7 @@ import {
   LogOut,
   Server,
   Wrench,
+  Sparkles,
 } from 'lucide-react';
 import { useNavigation } from '../context/NavigationContext';
 import { useAuth } from '../context/AuthContext';
@@ -32,7 +33,7 @@ const navigationGroups = [
       { name: 'Products Catalog', href: '/products', icon: Package },
       { name: 'Inventory & Stock', href: '/inventory', icon: Layers },
       { name: 'Orders Management', href: '/orders', icon: ShoppingBag },
-      { name: 'Stack & Scale Services', href: '/stack-and-scale', icon: Wrench },
+      { name: 'Software House Partner', href: '/stack-and-scale', icon: Sparkles },
     ],
   },
   {
@@ -140,7 +141,7 @@ export default function Sidebar() {
                 <div className="text-[11px] font-bold text-[#1b1a19] group-hover:text-[#0078d4] truncate flex items-baseline">
                   Stack<span className="text-[#8a8886] font-medium mx-[2px] text-[0.85em]">&amp;</span>Scale
                 </div>
-                <div className="text-[9px] text-[#605e5c] truncate">Sovereign Services OS</div>
+                <div className="text-[9px] text-[#605e5c] truncate">Software House Partner</div>
               </div>
             </div>
             <div className="flex items-center gap-1 shrink-0">

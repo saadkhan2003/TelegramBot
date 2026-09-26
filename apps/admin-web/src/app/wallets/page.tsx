@@ -12,6 +12,7 @@ import {
   Loader2,
   Check,
   X,
+  Trash2,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
 
@@ -24,6 +25,9 @@ export default function WalletsPage() {
   // Filters
   const [search, setSearch] = useState('');
   const [directionFilter, setDirectionFilter] = useState('');
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Form
   const [adjustForm, setAdjustForm] = useState({
@@ -94,6 +98,12 @@ export default function WalletsPage() {
     return matchesSearch && matchesDirection;
   });
 
+  // Selection helpers
+  const allFilteredSelected = filtered.length > 0 && filtered.every((tx) => selectedIds.has(tx.id));
+  const someFilteredSelected = filtered.some((tx) => selectedIds.has(tx.id));
+  const toggleSelectAll = () => { if (allFilteredSelected) setSelectedIds(new Set()); else setSelectedIds(new Set(filtered.map((tx) => tx.id))); };
+  const toggleSelect = (id: string) => { setSelectedIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
+
   return (
     <div className="space-y-6 max-w-7xl pb-12">
       {/* Header */}
@@ -142,24 +152,43 @@ export default function WalletsPage() {
         </select>
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between bg-[#eff6fc] border border-[#c7e0f4] rounded-[4px] px-4 py-2.5 shadow-sm animate-in slide-in-from-top-1 duration-150">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-[#0078d4]">{selectedIds.size} transaction{selectedIds.size > 1 ? 's' : ''} selected</span>
+            <button onClick={() => setSelectedIds(new Set())} className="text-[11px] text-[#605e5c] hover:text-[#201f1e] underline underline-offset-2">Clear selection</button>
+          </div>
+          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] bg-[#a4262c] hover:bg-[#8b2025] text-white text-xs font-semibold shadow-xs transition">
+            <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+          </button>
+        </div>
+      )}
+
       {/* Ledger Table */}
       <div className="bg-white border border-[#edebe9] rounded-[4px] overflow-x-auto shadow-sm">
         <table className="w-full text-left text-xs min-w-[700px]">
           <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
             <tr>
-              <th className="px-6 py-3 font-semibold">Type</th>
-              <th className="px-6 py-3 font-semibold">Customer</th>
-              <th className="px-6 py-3 font-semibold">Amount</th>
-              <th className="px-6 py-3 font-semibold">Balance Before</th>
-              <th className="px-6 py-3 font-semibold">Balance After</th>
-              <th className="px-6 py-3 font-semibold">Description</th>
-              <th className="px-6 py-3 font-semibold">Date</th>
+              <th className="px-3 py-3 w-10">
+                <input type="checkbox" checked={allFilteredSelected} ref={(el) => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected; }} onChange={toggleSelectAll} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
+              </th>
+              <th className="px-4 py-3 font-semibold">Type</th>
+              <th className="px-4 py-3 font-semibold">Customer</th>
+              <th className="px-4 py-3 font-semibold">Amount</th>
+              <th className="px-4 py-3 font-semibold">Balance Before</th>
+              <th className="px-4 py-3 font-semibold">Balance After</th>
+              <th className="px-4 py-3 font-semibold">Description</th>
+              <th className="px-4 py-3 font-semibold">Date</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
             {filtered.length > 0 ? (
               filtered.map((tx) => (
-                <tr key={tx.id} className="hover:bg-[#faf9f8] transition">
+                <tr key={tx.id} className={`hover:bg-[#faf9f8] transition ${selectedIds.has(tx.id) ? 'bg-[#eff6fc]' : ''}`}>
+                  <td className="px-3 py-4">
+                    <input type="checkbox" checked={selectedIds.has(tx.id)} onChange={() => toggleSelect(tx.id)} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
+                  </td>
                   <td className="px-6 py-4">
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] text-[10px] font-bold border ${
@@ -198,7 +227,7 @@ export default function WalletsPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-[#605e5c]">
+                <td colSpan={8} className="px-6 py-8 text-center text-[#605e5c]">
                   No ledger transactions match your search or filter criteria.
                 </td>
               </tr>

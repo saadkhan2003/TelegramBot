@@ -15,6 +15,7 @@ import {
   Send,
   User,
   Shield,
+  Trash2,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
 import CategoryBadge from '../../components/CategoryBadge';
@@ -26,6 +27,9 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Reply modal
   const [replyModal, setReplyModal] = useState<{
@@ -226,12 +230,15 @@ export default function SupportPage() {
           <table className="w-full text-left text-xs min-w-[700px]">
             <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
               <tr>
-                <th className="px-6 py-3 font-semibold">Ticket ID</th>
-                <th className="px-6 py-3 font-semibold">Customer</th>
-                <th className="px-6 py-3 font-semibold">Category</th>
-                <th className="px-6 py-3 font-semibold">Status</th>
-                <th className="px-6 py-3 font-semibold">Latest Message</th>
-                <th className="px-6 py-3 font-semibold text-right">Actions</th>
+                <th className="px-3 py-3 w-10">
+                  <input type="checkbox" checked={filteredTickets.length > 0 && filteredTickets.every((t) => selectedIds.has(t.id))} ref={(el) => { if (el) el.indeterminate = filteredTickets.some((t) => selectedIds.has(t.id)) && !filteredTickets.every((t) => selectedIds.has(t.id)); }} onChange={() => { if (filteredTickets.every((t) => selectedIds.has(t.id))) setSelectedIds(new Set()); else setSelectedIds(new Set(filteredTickets.map((t) => t.id))); }} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
+                </th>
+                <th className="px-4 py-3 font-semibold">Ticket ID</th>
+                <th className="px-4 py-3 font-semibold">Customer</th>
+                <th className="px-4 py-3 font-semibold">Category</th>
+                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold">Latest Message</th>
+                <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
@@ -239,7 +246,10 @@ export default function SupportPage() {
                 filteredTickets.map((t) => {
                   const lastMsg = t.messages?.[t.messages.length - 1];
                   return (
-                    <tr key={t.id} className="hover:bg-[#faf9f8] transition">
+                    <tr key={t.id} className={`hover:bg-[#faf9f8] transition ${selectedIds.has(t.id) ? 'bg-[#eff6fc]' : ''}`}>
+                      <td className="px-3 py-4">
+                        <input type="checkbox" checked={selectedIds.has(t.id)} onChange={() => { setSelectedIds((prev) => { const next = new Set(prev); if (next.has(t.id)) next.delete(t.id); else next.add(t.id); return next; }); }} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
+                      </td>
                       <td className="px-6 py-4 font-mono font-medium text-[#0078d4]">
                         #{t.ticketNumber}
                       </td>
@@ -279,7 +289,7 @@ export default function SupportPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-[#605e5c]">
+                  <td colSpan={7} className="px-6 py-8 text-center text-[#605e5c]">
                     No support tickets match your search or filter criteria.
                   </td>
                 </tr>
@@ -292,12 +302,15 @@ export default function SupportPage() {
           <table className="w-full text-left text-xs min-w-[700px]">
             <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
               <tr>
-                <th className="px-6 py-3 font-semibold">Claim ID</th>
-                <th className="px-6 py-3 font-semibold">Customer</th>
-                <th className="px-6 py-3 font-semibold">Target Product</th>
-                <th className="px-6 py-3 font-semibold">Reported Reason</th>
-                <th className="px-6 py-3 font-semibold">Status</th>
-                <th className="px-6 py-3 font-semibold text-right">Actions</th>
+                <th className="px-3 py-3 w-10">
+                  <input type="checkbox" checked={filteredClaims.length > 0 && filteredClaims.every((c) => selectedIds.has(c.id))} ref={(el) => { if (el) el.indeterminate = filteredClaims.some((c) => selectedIds.has(c.id)) && !filteredClaims.every((c) => selectedIds.has(c.id)); }} onChange={() => { if (filteredClaims.every((c) => selectedIds.has(c.id))) setSelectedIds(new Set()); else setSelectedIds(new Set(filteredClaims.map((c) => c.id))); }} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
+                </th>
+                <th className="px-4 py-3 font-semibold">Claim ID</th>
+                <th className="px-4 py-3 font-semibold">Customer</th>
+                <th className="px-4 py-3 font-semibold">Target Product</th>
+                <th className="px-4 py-3 font-semibold">Reported Reason</th>
+                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
