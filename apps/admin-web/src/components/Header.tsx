@@ -296,27 +296,20 @@ export default function Header() {
               {/* Profile Card Header */}
               <div className="p-3.5 bg-gradient-to-b from-[#faf9f8] to-white">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-[#0078d4] bg-gradient-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-xs shadow-sm tracking-wider shrink-0 ring-2 ring-[#c7e0f4]/50">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[#0f172a] via-[#1e293b] to-[#334155] text-white flex items-center justify-center font-bold text-sm shadow-sm tracking-wider shrink-0 ring-2 ring-[#e2e8f0]">
                     {getInitials(user?.name, user?.email)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-bold text-[#201f1e] truncate">
-                        {user?.name || user?.email?.split('@')[0] || 'Administrator'}
-                      </p>
-                    </div>
+                    <p className="text-xs font-bold text-[#201f1e] truncate">
+                      {user?.name || user?.email?.split('@')[0] || 'Administrator'}
+                    </p>
                     <p className="text-[11px] text-[#605e5c] truncate mt-0.5">
                       {user?.email || 'admin@deluxstore.com'}
                     </p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="px-1.5 py-0.2 rounded-[2px] bg-[#eff6fc] border border-[#c7e0f4] text-[#0078d4] text-[9px] font-bold uppercase tracking-wider">
-                        {user?.roles?.[0] || 'OWNER'}
-                      </span>
-                      <span className="flex items-center gap-1 text-[10px] font-medium text-[#107c10]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#107c10]" />
-                        Active Session
-                      </span>
-                    </div>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#107c10] mt-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#107c10]" />
+                      Active Session
+                    </span>
                   </div>
                 </div>
               </div>

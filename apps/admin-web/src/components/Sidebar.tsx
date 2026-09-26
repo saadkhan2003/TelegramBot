@@ -150,25 +150,20 @@ export default function Sidebar() {
           </Link>
         </div>
 
-        {/* User / Operator Row: Structured Enterprise Identity Card */}
+        {/* User / Operator Row */}
         <div className="p-3 border-t border-[#edebe9] bg-[#faf9f8]">
           <div className="p-2.5 rounded-[6px] bg-white border border-[#edebe9] shadow-2xs space-y-2">
             <div className="flex items-center gap-2.5">
               <div className="relative shrink-0">
-                <div className="h-8 w-8 rounded-full bg-[#0078d4] bg-gradient-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-[11px] tracking-wider shadow-xs">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#0f172a] via-[#1e293b] to-[#334155] text-white flex items-center justify-center font-bold text-[11px] tracking-wider shadow-xs">
                   {user?.name ? user.name.slice(0, 2).toUpperCase() : 'AD'}
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#107c10] border-2 border-white" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1">
-                  <p className="text-xs font-bold text-[#201f1e] truncate" title={user?.name || user?.email || 'Admin'}>
-                    {user?.name || user?.email?.split('@')[0] || 'Admin'}
-                  </p>
-                  <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-bold bg-[#eff6fc] text-[#0078d4] border border-[#c7e0f4] rounded-[2px] uppercase shrink-0">
-                    {user?.roles?.[0] || 'OWNER'}
-                  </span>
-                </div>
+                <p className="text-xs font-bold text-[#201f1e] truncate" title={user?.name || user?.email || 'Admin'}>
+                  {user?.name || user?.email?.split('@')[0] || 'Admin'}
+                </p>
                 <p className="text-[10px] text-[#605e5c] truncate mt-0.5" title={user?.email || ''}>
                   {user?.email || 'admin@deluxstore.com'}
                 </p>
