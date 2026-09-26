@@ -63,6 +63,8 @@ services:
       ADMIN_WEB_URL: ${ADMIN_WEB_URL:-*}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      ADMIN_DEFAULT_EMAIL: ${ADMIN_DEFAULT_EMAIL:-msaad.official6@gmail.com}
+      ADMIN_DEFAULT_PASSWORD: ${ADMIN_DEFAULT_PASSWORD:-Saad_@123}
     command: >
       sh -c "pnpm --filter @telegram-store/database db:push && node /app/packages/database/dist/seed.js && node dist/main.js"
     ports:
