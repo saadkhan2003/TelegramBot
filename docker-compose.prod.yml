@@ -86,7 +86,7 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://178.105.157.51:4000/api/v1}
     command: pnpm start
     ports:
-      - '3000:3000'
+      - '${ADMIN_WEB_PORT:-3001}:3000'
     networks:
       - delux_network
 
