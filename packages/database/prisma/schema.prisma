@@ -285,6 +285,8 @@ model Admin {
   warrantyClaims    WarrantyClaim[]
   refunds           Refund[]
   broadcasts        Broadcast[]
+  ownedStores       Store[]             @relation("StoreOwner")
+  storeMemberships  StoreMember[]
 
   @@map("admins")
 }
@@ -353,6 +355,49 @@ model AdminSession {
 }
 
 // ==========================================
+// TENANCY & MULTI-STORE BOT FLEET
+// ==========================================
+
+model Store {
+  id              String         @id @default(uuid()) @db.Uuid
+  name            String
+  slug            String         @unique
+  tagline         String?
+  botToken        String?        @map("bot_token")
+  botUsername     String?        @map("bot_username")
+  botStatus       String         @default("ACTIVE") @map("bot_status") // ACTIVE, PAUSED, ERROR
+  currency        String         @default("USD")
+  welcomeMessage  String?        @map("welcome_message")
+  supportUsername String?        @map("support_username")
+  ownerId         String         @map("owner_id") @db.Uuid
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  owner           Admin          @relation("StoreOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members         StoreMember[]
+  categories      Category[]
+  products        Product[]
+  inventoryItems  InventoryItem[]
+  orders          Order[]
+
+  @@map("stores")
+}
+
+model StoreMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  storeId   String   @map("store_id") @db.Uuid
+  adminId   String   @map("admin_id") @db.Uuid
+  role      String   @default("ADMIN") // OWNER, ADMIN, MANAGER, SUPPORT_AGENT
+  createdAt DateTime @default(now()) @map("created_at")
+
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, adminId])
+  @@map("store_members")
+}
+
+// ==========================================
 // CATALOG & INVENTORY
 // ==========================================
 
@@ -370,7 +415,10 @@ model Category {
   parent      Category?      @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    Category[]     @relation("CategoryHierarchy")
   products    Product[]
+  storeId     String?        @map("store_id") @db.Uuid
+  store       Store?         @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
+  @@index([storeId])
   @@map("categories")
 }
 
@@ -403,9 +451,12 @@ model Product {
   category            Category       @relation(fields: [categoryId], references: [id])
   inventoryItems      InventoryItem[]
   orderItems          OrderItem[]
+  storeId             String?        @map("store_id") @db.Uuid
+  store               Store?         @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([categoryId, status])
   @@index([status])
+  @@index([storeId])
   @@map("products")
 }
 
@@ -445,9 +496,12 @@ model InventoryItem {
   product              Product         @relation(fields: [productId], references: [id])
   supplier             Supplier?       @relation(fields: [supplierId], references: [id])
   deliveries           Delivery[]
+  storeId              String?         @map("store_id") @db.Uuid
+  store                Store?          @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([productId, status])
   @@index([status])
+  @@index([storeId])
   @@map("inventory_items")
 }
 
@@ -530,9 +584,12 @@ model Order {
   warrantyClaims      WarrantyClaim[]
   commissions         ReferralCommission[]
   supportTickets      SupportTicket[]
+  storeId             String?            @map("store_id") @db.Uuid
+  store               Store?             @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([status])
+  @@index([storeId])
   @@map("orders")
 }
 

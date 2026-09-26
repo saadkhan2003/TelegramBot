@@ -19,6 +19,7 @@ import { decryptPayload } from '@telegram-store/inventory';
 import { Prisma } from '@telegram-store/database';
 import { BlockchainPaymentVerifier } from '@telegram-store/payments';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { MultiBotManager } from './multi-bot-manager';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -88,59 +89,62 @@ function buildMainMenu(lang: string) {
   return keyboard;
 }
 
-// /start command
-bot.command('start', async (ctx) => {
-  const user = await getUser(ctx);
-  if (!user) return;
+export function registerBotHandlers(bot: Bot, store?: any) {
+  const storeName = store?.name || process.env.STORE_NAME || 'Delux Store';
 
-  // Process referral deep link: e.g. /start ref_123456789
-  const text = ctx.message?.text || '';
-  const match = text.match(/ref_(\d+)/);
-  if (match && match[1] && !user.referredByUserId) {
-    const referrerTgId = BigInt(match[1]);
-    if (referrerTgId !== user.telegramUserId) {
-      const referrer = await prisma.user.findUnique({ where: { telegramUserId: referrerTgId } });
-      if (referrer) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { referredByUserId: referrer.id },
-        });
-        await prisma.referral.upsert({
-          where: { referredUserId: user.id },
-          update: {},
-          create: {
-            referrerUserId: referrer.id,
-            referredUserId: user.id,
-            source: 'telegram_deep_link',
-          },
-        });
+  // /start command
+  bot.command('start', async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+
+    // Process referral deep link: e.g. /start ref_123456789
+    const text = ctx.message?.text || '';
+    const match = text.match(/ref_(\d+)/);
+    if (match && match[1] && !user.referredByUserId) {
+      const referrerTgId = BigInt(match[1]);
+      if (referrerTgId !== user.telegramUserId) {
+        const referrer = await prisma.user.findUnique({ where: { telegramUserId: referrerTgId } });
+        if (referrer) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { referredByUserId: referrer.id },
+          });
+          await prisma.referral.upsert({
+            where: { referredUserId: user.id },
+            update: {},
+            create: {
+              referrerUserId: referrer.id,
+              referredUserId: user.id,
+              source: 'telegram_deep_link',
+            },
+          });
+        }
       }
     }
-  }
 
-  const welcomeText = t('welcome.title', user.preferredLanguage, {
-    storeName: process.env.STORE_NAME || 'Delux Store',
-  });
+    const welcomeText = t('welcome.title', user.preferredLanguage, {
+      storeName,
+    });
 
-  await ctx.reply(welcomeText, {
-    reply_markup: buildMainMenu(user.preferredLanguage),
-  });
-});
-
-// MAIN MENU NAVIGATION
-bot.callbackQuery('nav_main', async (ctx) => {
-  const user = await getUser(ctx);
-  if (!user) return;
-  userStates.delete(user.telegramUserId);
-
-  await ctx.editMessageText(
-    t('welcome.title', user.preferredLanguage, { storeName: process.env.STORE_NAME || 'Delux Store' }),
-    {
+    await ctx.reply(welcomeText, {
       reply_markup: buildMainMenu(user.preferredLanguage),
-    },
-  );
-  await ctx.answerCallbackQuery();
-});
+    });
+  });
+
+  // MAIN MENU NAVIGATION
+  bot.callbackQuery('nav_main', async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+    userStates.delete(user.telegramUserId);
+
+    await ctx.editMessageText(
+      t('welcome.title', user.preferredLanguage, { storeName }),
+      {
+        reply_markup: buildMainMenu(user.preferredLanguage),
+      },
+    );
+    await ctx.answerCallbackQuery();
+  });
 
 // BUY / CATALOG
 bot.callbackQuery('nav_buy', async (ctx) => {
@@ -148,7 +152,10 @@ bot.callbackQuery('nav_buy', async (ctx) => {
   if (!user) return;
 
   const categories = await prisma.category.findMany({
-    where: { status: CategoryStatus.ACTIVE },
+    where: {
+      status: CategoryStatus.ACTIVE,
+      ...(store?.id ? { OR: [{ storeId: store.id }, { storeId: null }] } : {}),
+    },
     orderBy: { sortOrder: 'asc' },
   });
 
@@ -177,7 +184,11 @@ bot.callbackQuery(/^cat_(.+)$/, async (ctx) => {
 
   const categoryId = ctx.match[1]!;
   const products = await prisma.product.findMany({
-    where: { categoryId, status: ProductStatus.ACTIVE },
+    where: {
+      categoryId,
+      status: ProductStatus.ACTIVE,
+      ...(store?.id ? { OR: [{ storeId: store.id }, { storeId: null }] } : {}),
+    },
     orderBy: { sortOrder: 'asc' },
     include: {
       _count: {
@@ -448,6 +459,7 @@ bot.callbackQuery(/^exec_checkout_([^_]+)_(\d+)$/, async (ctx) => {
             status: isManualFulfilment ? OrderStatus.PROCESSING : OrderStatus.FULFILLED,
             walletTransactionId: walletTx.id,
             completedAt: isManualFulfilment ? null : new Date(),
+            storeId: store?.id || product.storeId || null,
           },
         });
 
@@ -861,7 +873,7 @@ bot.callbackQuery(/^set_lang_(.+)$/, async (ctx) => {
 
   await ctx.answerCallbackQuery({ text: 'Language updated!' });
   await ctx.editMessageText(
-    t('welcome.title', langCode, { storeName: process.env.STORE_NAME || 'Delux Store' }),
+    t('welcome.title', langCode, { storeName }),
     { reply_markup: buildMainMenu(langCode) },
   );
 });
@@ -1177,12 +1189,20 @@ bot.on('message:photo', async (ctx) => {
     return;
   }
 });
+} // end registerBotHandlers
 
-// Run bot in long-polling mode for local development
-if (process.env.NODE_ENV !== 'test' && BOT_TOKEN && BOT_TOKEN !== 'your_telegram_bot_token_here') {
-  bot.start({
-    onStart: (info) => {
-      console.log(`🤖 grammY Telegram Bot started as @${info.username}`);
-    },
-  });
+// Attach handlers to the default exported bot instance
+registerBotHandlers(bot);
+
+// Initialize multi-tenant bot fleet manager
+export const multiBotManager = new MultiBotManager();
+
+if (process.env.NODE_ENV !== 'test') {
+  multiBotManager
+    .start((tenantBot, tenantStore) => {
+      registerBotHandlers(tenantBot, tenantStore);
+    })
+    .catch((err) => {
+      console.error('MultiBotManager startup error:', err);
+    });
 }

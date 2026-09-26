@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useNavigation } from '../context/NavigationContext';
 import { useAuth } from '../context/AuthContext';
+import StoreSwitcher from './StoreSwitcher';
 
 const navigationGroups = [
   {
@@ -70,45 +71,18 @@ export default function Sidebar() {
           isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 shadow-xs'
         }`}
       >
-        {/* Brand Header: Enterprise Tenant Row */}
-        <div className="h-16 flex items-center px-4 border-b border-[#edebe9] bg-[#faf9f8] justify-between group hover:bg-[#f3f2f1] transition">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Enterprise Architectural Vector Mark */}
-            <div className="relative h-9 w-9 rounded-[7px] p-[1px] shadow-sm flex items-center justify-center shrink-0 border border-[#0078d4]/30 bg-[#051329] overflow-hidden">
-              <img
-                src="/icons/icon-192.png"
-                alt="Delux Store Logo"
-                className="h-full w-full object-cover rounded-[6px]"
-              />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-[#201f1e] truncate tracking-tight">Delux Store</span>
-                <span className="px-1.5 py-0.2 text-[9px] font-bold bg-[#eff6fc] text-[#0078d4] border border-[#c7e0f4] rounded-[2px] uppercase tracking-wide">
-                  PRO
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#107c10] opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#107c10]" />
-                </span>
-                <span className="text-[11px] text-[#605e5c] truncate">Bot Engine Live</span>
-              </div>
-            </div>
+        {/* Brand Header: Enterprise Tenant Row with Store Switcher */}
+        <div className="h-16 flex items-center px-2.5 border-b border-[#edebe9] bg-[#faf9f8] justify-between">
+          <div className="flex-1 min-w-0">
+            <StoreSwitcher />
           </div>
-
-          <div className="flex items-center gap-1">
-            <ChevronsUpDown className="hidden sm:block h-3.5 w-3.5 text-[#8a8886] group-hover:text-[#201f1e] shrink-0 transition" />
-            <button
-              onClick={closeMobileMenu}
-              className="lg:hidden p-1.5 rounded-[4px] text-[#605e5c] hover:text-[#201f1e] hover:bg-[#edebe9] transition"
-              aria-label="Close sidebar"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+          <button
+            onClick={closeMobileMenu}
+            className="lg:hidden p-1.5 rounded-[4px] text-[#605e5c] hover:text-[#201f1e] hover:bg-[#edebe9] transition ml-1 shrink-0"
+            aria-label="Close sidebar"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Grouped Enterprise Navigation */}

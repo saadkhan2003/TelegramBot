@@ -20,6 +20,7 @@ export async function fetchApi<T = any>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const activeStoreId = typeof window !== 'undefined' ? localStorage.getItem('active_store_id') : null;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -28,6 +29,10 @@ export async function fetchApi<T = any>(
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  if (activeStoreId) {
+    headers['x-store-id'] = activeStoreId;
   }
 
   const base = getApiBase();

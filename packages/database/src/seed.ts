@@ -184,6 +184,60 @@ async function main() {
 
   console.log(`👤 Admin created: ${defaultEmail}`);
 
+  // 2b. Default Multi-Tenant Store (Delux Store)
+  const defaultBotToken = process.env.TELEGRAM_BOT_TOKEN || '';
+  const defaultStore = await prisma.store.upsert({
+    where: { slug: 'delux-store' },
+    update: {
+      botToken: defaultBotToken,
+      ownerId: admin.id,
+    },
+    create: {
+      name: 'Delux Store',
+      slug: 'delux-store',
+      tagline: 'Premium Authorized Digital Goods & Licenses',
+      currency: 'USD',
+      botToken: defaultBotToken,
+      botUsername: 'thedeluxstorebot',
+      botStatus: 'ACTIVE',
+      ownerId: admin.id,
+    },
+  });
+
+  await prisma.storeMember.upsert({
+    where: {
+      storeId_adminId: {
+        storeId: defaultStore.id,
+        adminId: admin.id,
+      },
+    },
+    update: { role: 'OWNER' },
+    create: {
+      storeId: defaultStore.id,
+      adminId: admin.id,
+      role: 'OWNER',
+    },
+  });
+
+  // Backfill existing catalog & orders to default store
+  await prisma.category.updateMany({
+    where: { storeId: null },
+    data: { storeId: defaultStore.id },
+  });
+  await prisma.product.updateMany({
+    where: { storeId: null },
+    data: { storeId: defaultStore.id },
+  });
+  await prisma.inventoryItem.updateMany({
+    where: { storeId: null },
+    data: { storeId: defaultStore.id },
+  });
+  await prisma.order.updateMany({
+    where: { storeId: null },
+    data: { storeId: defaultStore.id },
+  });
+  console.log(`🏬 Default Store initialized: ${defaultStore.name} (${defaultStore.id})`);
+
   // 3. Payment Networks (Pakistani Local + Crypto)
   const networks = [
     {
