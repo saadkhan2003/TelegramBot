@@ -70,12 +70,17 @@ export default function Header() {
 
   const getInitials = (name?: string, email?: string) => {
     if (name) {
-      const parts = name.trim().split(/\s+/);
-      if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-      return name.slice(0, 2).toUpperCase();
+      const cleaned = name.replace(/[^\w\s]/g, '').trim();
+      const parts = cleaned.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+      if (parts.length === 1 && parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase();
+      if (parts.length === 1) return parts[0][0].toUpperCase();
     }
-    if (email) return email.slice(0, 2).toUpperCase();
-    return 'AD';
+    if (email) {
+      const username = email.split('@')[0].replace(/[^\w\s]/g, '');
+      return username.slice(0, 2).toUpperCase();
+    }
+    return 'MS';
   };
 
   const activeNotifications = notifications.filter((n) => !dismissedIds.has(n.id));
@@ -120,12 +125,12 @@ export default function Header() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-[#edebe9] flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-30 shadow-xs">
-      <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-lg">
+    <header className="h-16 bg-white border-b border-[#edebe9] flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-30 shadow-2xs">
+      <div className="flex items-center gap-3 flex-1 max-w-lg">
         {/* Mobile Hamburger Drawer Toggle */}
         <button
           onClick={toggleMobileMenu}
-          className="lg:hidden p-2 rounded-[4px] text-[#605e5c] hover:text-[#201f1e] hover:bg-[#f3f2f1] transition -ml-1 shrink-0"
+          className="lg:hidden p-2 rounded-[6px] text-[#605e5c] hover:text-[#201f1e] hover:bg-[#f3f2f1] transition -ml-1 shrink-0 cursor-pointer"
           aria-label="Open navigation menu"
         >
           <Menu className="h-5 w-5" />
@@ -138,49 +143,41 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Search Input */}
-        <div className="relative w-full">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8886]" />
+        {/* Restructured Clean Search Input */}
+        <div className="relative w-full max-w-md">
+          <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
           <input
             type="text"
             placeholder="Search orders, customers, TxIDs..."
-            className="w-full bg-[#f3f2f1] border border-[#d2d0ce] rounded-[4px] pl-9 pr-3 py-1.5 text-xs text-[#201f1e] placeholder-[#a19f9d] focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4] transition"
+            className="w-full bg-[#f8fafc] border border-[#e2e8f0] rounded-[6px] pl-9 pr-12 py-1.5 text-xs text-[#1e293b] placeholder-[#94a3b8] focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4] transition shadow-2xs"
           />
+          <span className="hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-[#94a3b8] bg-white border border-[#e2e8f0] px-1.5 py-0.5 rounded-[4px] shadow-2xs">
+            ⌘K
+          </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4 shrink-0 ml-2">
-        {/* Production Online Beacon */}
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-[4px] bg-[#dff6dd]/60 border border-[#a8e5a3]/50">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#107c10] opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#107c10]" />
-          </span>
-          <span className="hidden sm:inline text-[11px] font-semibold text-[#107c10]">Production Online</span>
-        </div>
-
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2">
         {/* Notification Bell Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className={`relative p-2 rounded-[4px] transition ${
+            className={`relative p-2 rounded-[6px] transition-all border cursor-pointer ${
               isOpen
-                ? 'bg-[#eff6fc] text-[#0078d4]'
-                : 'text-[#605e5c] hover:text-[#201f1e] hover:bg-[#f3f2f1]'
+                ? 'bg-[#eff6fc] border-[#c7e0f4] text-[#0078d4]'
+                : 'border-transparent text-[#605e5c] hover:text-[#201f1e] hover:bg-[#f3f2f1]'
             }`}
             title="Notifications"
           >
             <Bell className="h-4 w-4" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-[#d13438] text-white text-[10px] font-bold flex items-center justify-center border-2 border-white animate-pulse">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#ef4444] ring-2 ring-white animate-pulse" />
             )}
           </button>
 
           {/* Microsoft Fluent Light Dropdown Popover */}
           {isOpen && (
-            <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white border border-[#edebe9] rounded-[4px] shadow-fluentModal z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white border border-[#edebe9] rounded-[6px] shadow-fluentModal z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
               {/* Header */}
               <div className="px-4 py-3 border-b border-[#edebe9] bg-[#faf9f8] flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -194,7 +191,7 @@ export default function Header() {
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-[11px] text-[#0078d4] hover:text-[#106ebe] font-medium flex items-center gap-1"
+                    className="text-[11px] text-[#0078d4] hover:text-[#106ebe] font-medium flex items-center gap-1 cursor-pointer"
                   >
                     <CheckCheck className="h-3.5 w-3.5" /> Mark all read
                   </button>
@@ -248,13 +245,13 @@ export default function Header() {
                     setIsOpen(false);
                     router.push('/orders');
                   }}
-                  className="text-[#0078d4] hover:text-[#106ebe] font-medium"
+                  className="text-[#0078d4] hover:text-[#106ebe] font-medium cursor-pointer"
                 >
                   View Orders Queue →
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="text-[#8a8886] hover:text-[#201f1e]"
+                  className="text-[#8a8886] hover:text-[#201f1e] cursor-pointer"
                 >
                   Close
                 </button>
@@ -263,36 +260,34 @@ export default function Header() {
           )}
         </div>
 
-        {/* Enterprise User Profile Dropdown */}
-        <div className="relative pl-2 border-l border-[#edebe9]" ref={profileRef}>
+        {/* Clean Divider */}
+        <div className="h-5 w-[1px] bg-[#e2e8f0]" />
+
+        {/* Executive User Profile Dropdown */}
+        <div className="relative" ref={profileRef}>
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className={`flex items-center gap-2 px-2 py-1 rounded-[6px] transition-all border ${
+            className={`flex items-center gap-2.5 px-2 py-1 rounded-[6px] transition-all border cursor-pointer ${
               isProfileOpen
-                ? 'bg-[#eff6fc] border-[#c7e0f4] shadow-xs'
+                ? 'bg-[#eff6fc] border-[#c7e0f4] shadow-2xs'
                 : 'border-transparent hover:bg-[#faf9f8] hover:border-[#edebe9]'
             }`}
           >
-            <div className="relative shrink-0">
-              <div className="h-7 w-7 rounded-full bg-[#0078d4] bg-gradient-to-br from-[#0078d4] to-[#004e8c] text-white flex items-center justify-center font-bold text-[11px] shadow-xs tracking-wider">
-                {getInitials(user?.name, user?.email)}
-              </div>
+            {/* Sleek Executive Dark Avatar */}
+            <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#0f172a] via-[#1e293b] to-[#334155] text-white flex items-center justify-center font-bold text-[11px] shadow-2xs tracking-wider ring-1 ring-slate-900/10 shrink-0">
+              {getInitials(user?.name, user?.email)}
             </div>
 
-            <div className="hidden sm:flex flex-col text-left">
-              <span className="text-xs font-bold text-[#201f1e] leading-tight truncate max-w-[120px]">
+            {/* User Name with Chevron beside it - NO OWNER text below */}
+            <div className="hidden sm:flex items-center gap-1.5 text-left">
+              <span className="text-xs font-semibold text-[#1e293b] tracking-tight">
                 {user?.name || user?.email?.split('@')[0] || 'Admin'}
               </span>
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] text-[#0078d4] font-semibold leading-tight uppercase tracking-wider">
-                  {user?.roles?.[0] || 'OWNER'}
-                </span>
-                <ChevronDown
-                  className={`h-3 w-3 text-[#8a8886] transition-transform duration-200 ${
-                    isProfileOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </div>
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-[#8a8886] transition-transform duration-200 ${
+                  isProfileOpen ? 'rotate-180 text-[#0f172a]' : ''
+                }`}
+              />
             </div>
           </button>
 

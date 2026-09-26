@@ -174,7 +174,7 @@ export default function LoginPage() {
               <img
                 src="/icons/icon-192.png"
                 alt="Delux Store"
-                className="h-full w-full object-cover rounded-[5.5px]"
+               className="h-full w-full object-cover rounded-[5.5px]"
               />
             </div>
             <div className="flex items-center gap-2">
