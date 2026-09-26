@@ -565,35 +565,58 @@ bot.callbackQuery('nav_wallet', async (ctx) => {
   const user = await getUser(ctx);
   if (!user) return;
 
-  const networks = await prisma.paymentNetwork.findMany({
-    where: { isActive: true },
-    orderBy: { name: 'asc' },
-  });
+  const [networks, rateSetting] = await Promise.all([
+    prisma.paymentNetwork.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    }),
+    prisma.systemSetting.findUnique({ where: { key: 'usd_to_pkr_rate' } }),
+  ]);
 
+  const pkrRate = rateSetting ? Number(rateSetting.value) || 280 : 280;
   const wallet = user.wallet;
-  const balance = Number(wallet?.cachedBalance ?? 0).toFixed(2);
-  const deposited = Number(wallet?.totalDeposited ?? 0).toFixed(2);
-  const spent = Number(wallet?.totalSpent ?? 0).toFixed(2);
-  const referrals = Number(wallet?.referralEarnings ?? 0).toFixed(2);
+  const balance = Number(wallet?.cachedBalance ?? 0);
+  const deposited = Number(wallet?.totalDeposited ?? 0);
+  const spent = Number(wallet?.totalSpent ?? 0);
+  const referrals = Number(wallet?.referralEarnings ?? 0);
 
-  const text = t('wallet.title', user.preferredLanguage, {
-    balance,
-    deposited,
-    spent,
-    referrals,
-  });
+  const balancePkr = (balance * pkrRate).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const depositedPkr = (deposited * pkrRate).toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+  const text =
+    `💼 *My Wallet / والیٹ*\n\n` +
+    `💰 *Available Balance:* $${balance.toFixed(2)} *(Rs. ${balancePkr} PKR)*\n` +
+    `📥 *Total Deposited:* $${deposited.toFixed(2)} (Rs. ${depositedPkr} PKR)\n` +
+    `🛍 *Total Spent:* $${spent.toFixed(2)}\n` +
+    `🎁 *Referral Earnings:* $${referrals.toFixed(2)}\n\n` +
+    `💱 *Exchange Rate:* $1.00 USD = Rs. ${pkrRate} PKR\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `💳 *Choose Payment Method to Top-Up:*`;
 
   const keyboard = new InlineKeyboard();
-  networks.forEach((net) => {
-    keyboard.text(`💵 ${net.name}`, `deposit_${net.id}`).row();
-  });
+
+  if (networks.length === 0) {
+    keyboard.text('⚠️ No payment methods currently active', 'noop').row();
+  } else {
+    networks.forEach((net) => {
+      let icon = '💵';
+      if (net.chain === 'JAZZCASH') icon = '📱';
+      else if (net.chain === 'EASYPAISA') icon = '🟢';
+      else if (net.chain === 'BANK_PK') icon = '🏦';
+      else if (net.type === 'LOCAL_PK') icon = '🇵🇰';
+      else if (net.type === 'CRYPTO') icon = '🪙';
+
+      const label = `${icon} ${net.name}`;
+      keyboard.text(label, `deposit_${net.id}`).row();
+    });
+  }
 
   keyboard
     .text(t('menu.refresh', user.preferredLanguage), 'nav_wallet')
     .row()
     .text(t('menu.main', user.preferredLanguage), 'nav_main');
 
-  await ctx.editMessageText(text, { reply_markup: keyboard });
+  await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: keyboard });
   await ctx.answerCallbackQuery();
 });
 
@@ -603,10 +626,49 @@ bot.callbackQuery(/^deposit_(.+)$/, async (ctx) => {
   if (!user) return;
 
   const networkId = ctx.match[1]!;
-  const network = await prisma.paymentNetwork.findUnique({ where: { id: networkId } });
+  const [network, rateSetting] = await Promise.all([
+    prisma.paymentNetwork.findUnique({ where: { id: networkId } }),
+    prisma.systemSetting.findUnique({ where: { key: 'usd_to_pkr_rate' } }),
+  ]);
   if (!network) return;
 
-  // Set conversation state: WAITING_FOR_TXID
+  const pkrRate = rateSetting ? Number(rateSetting.value) || 280 : 280;
+
+  if (network.type === 'LOCAL_PK') {
+    // Set conversation state: WAITING_FOR_LOCAL_TID
+    userStates.set(user.telegramUserId, {
+      state: 'WAITING_FOR_LOCAL_TID',
+      metadata: { networkId: network.id, pkrRate },
+    });
+
+    const minPkr = Number(network.minDeposit || 300);
+    const minUsd = (minPkr / pkrRate).toFixed(2);
+
+    const localText =
+      `🇵🇰 *${network.name} Payment Details*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `👤 *Account Title:* \`${network.accountTitle || 'Store Owner'}\`\n` +
+      `🔢 *Account Number:* \`${network.receivingAddress}\`\n` +
+      `💵 *Minimum Deposit:* Rs. ${minPkr} PKR (~$${minUsd} USD)\n` +
+      `💱 *Current Rate:* $1.00 USD = Rs. ${pkrRate} PKR\n\n` +
+      `📌 *Instructions / طریقہ کار:*\n` +
+      `${network.instructions || 'Send amount to account above and reply here with Transaction ID.'}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `✍️ *What to do after sending payment:*\n` +
+      `Please reply to this message with your *Transaction ID (TID / TRX ID)* from your SMS/Receipt.\n\n` +
+      `Example: \`12345678901\` or reference number.`;
+
+    const kb = new InlineKeyboard().text(t('menu.back', user.preferredLanguage), 'nav_wallet');
+
+    await ctx.editMessageText(localText, {
+      parse_mode: 'Markdown',
+      reply_markup: kb,
+    });
+    await ctx.answerCallbackQuery();
+    return;
+  }
+
+  // Set conversation state: WAITING_FOR_TXID (Crypto)
   userStates.set(user.telegramUserId, {
     state: 'WAITING_FOR_TXID',
     metadata: { networkId: network.id },
@@ -853,6 +915,72 @@ bot.on('message:text', async (ctx) => {
     return;
   }
 
+  // 0. Pakistani Local Payment TID Handler (JazzCash, EasyPaisa, Bank Transfer)
+  if (currentState.state === 'WAITING_FOR_LOCAL_TID') {
+    const tid = ctx.message.text.trim();
+    const networkId = currentState.metadata?.networkId;
+    const pkrRate = currentState.metadata?.pkrRate || 280;
+    userStates.delete(user.telegramUserId);
+
+    const network = await prisma.paymentNetwork.findUnique({ where: { id: networkId } });
+    if (!network) return;
+
+    // Check duplicate TID
+    const dup = await prisma.deposit.findFirst({
+      where: { paymentNetworkId: network.id, transactionHash: tid },
+    });
+
+    if (dup) {
+      await ctx.reply('⚠️ This Transaction ID (TID) has already been submitted or credited.');
+      return;
+    }
+
+    const depositNumber = generateDepositNumber();
+    await prisma.deposit.create({
+      data: {
+        depositNumber,
+        userId: user.id,
+        walletId: user.wallet!.id,
+        paymentNetworkId: network.id,
+        depositAddress: network.receivingAddress,
+        transactionHash: tid,
+        status: 'MANUAL_REVIEW',
+        verificationData: {
+          method: network.name,
+          accountTitle: network.accountTitle,
+          receivingAddress: network.receivingAddress,
+          tid,
+          type: 'LOCAL_PK',
+          currency: network.currency,
+          pkrRate,
+        },
+      },
+    });
+
+    const receiptMessage =
+      `✅ *Deposit Request Submitted!*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `🧾 Deposit #: *#${depositNumber}*\n` +
+      `📱 Method: *${network.name}*\n` +
+      `👤 Account Title: *${network.accountTitle || 'Store'}*\n` +
+      `🔢 Transaction ID (TID): \`${tid}\`\n\n` +
+      `⏳ *Status: Pending Verification*\n` +
+      `Our admin team will verify your payment against ${network.name} and credit your balance within 5-15 minutes.\n` +
+      `You will receive an automatic message here as soon as it is credited!`;
+
+    const kb = new InlineKeyboard()
+      .text(t('menu.orders', user.preferredLanguage), 'nav_orders')
+      .text(t('menu.buy', user.preferredLanguage), 'nav_buy')
+      .row()
+      .text(t('menu.main', user.preferredLanguage), 'nav_main');
+
+    await ctx.reply(receiptMessage, {
+      parse_mode: 'Markdown',
+      reply_markup: kb,
+    });
+    return;
+  }
+
   // 1. Transaction Hash Submission (PRD Section 34-39)
   if (currentState.state === 'WAITING_FOR_TXID') {
     const txHash = ctx.message.text.trim();
@@ -980,6 +1108,72 @@ bot.on('message:text', async (ctx) => {
 
     const msg = t('support.ticket_created', user.preferredLanguage, { ticketNumber });
     await ctx.reply(msg, { reply_markup: buildMainMenu(user.preferredLanguage) });
+    return;
+  }
+});
+
+// PHOTO / SCREENSHOT RECEIPT HANDLER
+bot.on('message:photo', async (ctx) => {
+  const user = await getUser(ctx);
+  if (!user) return;
+
+  const currentState = userStates.get(user.telegramUserId);
+  if (currentState?.state === 'WAITING_FOR_LOCAL_TID') {
+    const caption = ctx.message.caption?.trim() || '';
+    const photos = ctx.message.photo;
+    const fileId = photos[photos.length - 1]?.file_id;
+    const networkId = currentState.metadata?.networkId;
+    const pkrRate = currentState.metadata?.pkrRate || 280;
+    userStates.delete(user.telegramUserId);
+
+    const network = await prisma.paymentNetwork.findUnique({ where: { id: networkId } });
+    if (!network) return;
+
+    const tid = caption || `SCREENSHOT-${fileId.slice(-8)}`;
+    const depositNumber = generateDepositNumber();
+    await prisma.deposit.create({
+      data: {
+        depositNumber,
+        userId: user.id,
+        walletId: user.wallet!.id,
+        paymentNetworkId: network.id,
+        depositAddress: network.receivingAddress,
+        transactionHash: tid,
+        status: 'MANUAL_REVIEW',
+        verificationData: {
+          method: network.name,
+          accountTitle: network.accountTitle,
+          receivingAddress: network.receivingAddress,
+          tid,
+          telegramPhotoFileId: fileId,
+          type: 'LOCAL_PK',
+          currency: network.currency,
+          pkrRate,
+        },
+      },
+    });
+
+    const receiptMessage =
+      `✅ *Payment Proof Screenshot Received!*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `🧾 Deposit #: *#${depositNumber}*\n` +
+      `📱 Method: *${network.name}*\n` +
+      `👤 Account Title: *${network.accountTitle || 'Store'}*\n` +
+      (caption ? `🔢 TID/Notes: \`${caption}\`\n\n` : '\n') +
+      `⏳ *Status: Pending Verification*\n` +
+      `Our admin team will review your payment screenshot and credit your balance within 5-15 minutes!\n` +
+      `You will receive an instant notification here once approved.`;
+
+    const kb = new InlineKeyboard()
+      .text(t('menu.orders', user.preferredLanguage), 'nav_orders')
+      .text(t('menu.buy', user.preferredLanguage), 'nav_buy')
+      .row()
+      .text(t('menu.main', user.preferredLanguage), 'nav_main');
+
+    await ctx.reply(receiptMessage, {
+      parse_mode: 'Markdown',
+      reply_markup: kb,
+    });
     return;
   }
 });

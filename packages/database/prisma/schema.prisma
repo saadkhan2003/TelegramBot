@@ -456,14 +456,18 @@ model InventoryItem {
 
 model PaymentNetwork {
   id                    String     @id @default(uuid()) @db.Uuid
-  name                  String     // e.g. USDT BEP20
-  chain                 String     // e.g. BSC, TRON, TON
-  currency              String     // e.g. USDT
-  symbol                String     // e.g. USDT
+  name                  String     // e.g. JazzCash, EasyPaisa, Bank Transfer / Raast, USDT BEP20
+  chain                 String     // e.g. JAZZCASH, EASYPAISA, BANK_PK, BSC, TRON, TON
+  currency              String     // e.g. PKR, USDT, USD
+  symbol                String     // e.g. PKR, USDT
+  type                  String     @default("CRYPTO") @map("type") // "LOCAL_PK" | "CRYPTO"
+  accountTitle          String?    @map("account_title")
   receivingAddress      String     @map("receiving_address")
+  instructions          String?    @map("instructions")
   minDeposit            Decimal    @default(1.00) @map("min_deposit") @db.Decimal(18, 4)
   confirmationsRequired Int        @default(1) @map("confirmations_required")
   isActive              Boolean    @default(true) @map("is_active")
+  sortOrder             Int        @default(0) @map("sort_order")
   createdAt             DateTime   @default(now()) @map("created_at")
   updatedAt             DateTime   @updatedAt @map("updated_at")
 

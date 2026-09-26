@@ -22,19 +22,81 @@ export class DepositsService {
 
   async getAllNetworksAdmin() {
     return this.prisma.paymentNetwork.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
   }
 
-  async updateNetwork(id: string, data: { receivingAddress?: string; minDeposit?: number; isActive?: boolean }) {
+  async updateNetwork(
+    id: string,
+    data: {
+      name?: string;
+      accountTitle?: string;
+      receivingAddress?: string;
+      instructions?: string;
+      minDeposit?: number;
+      isActive?: boolean;
+      currency?: string;
+      symbol?: string;
+      type?: string;
+      sortOrder?: number;
+    },
+  ) {
     return this.prisma.paymentNetwork.update({
       where: { id },
       data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.accountTitle !== undefined ? { accountTitle: data.accountTitle } : {}),
         ...(data.receivingAddress !== undefined ? { receivingAddress: data.receivingAddress } : {}),
+        ...(data.instructions !== undefined ? { instructions: data.instructions } : {}),
         ...(data.minDeposit !== undefined ? { minDeposit: data.minDeposit } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+        ...(data.currency !== undefined ? { currency: data.currency } : {}),
+        ...(data.symbol !== undefined ? { symbol: data.symbol } : {}),
+        ...(data.type !== undefined ? { type: data.type } : {}),
+        ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
       },
     });
+  }
+
+  async createNetwork(data: {
+    name: string;
+    chain: string;
+    currency?: string;
+    symbol?: string;
+    type?: string;
+    accountTitle?: string;
+    receivingAddress: string;
+    instructions?: string;
+    minDeposit?: number;
+    isActive?: boolean;
+    sortOrder?: number;
+  }) {
+    return this.prisma.paymentNetwork.create({
+      data: {
+        name: data.name,
+        chain: data.chain,
+        currency: data.currency || (data.type === 'LOCAL_PK' ? 'PKR' : 'USDT'),
+        symbol: data.symbol || (data.type === 'LOCAL_PK' ? 'PKR' : 'USDT'),
+        type: data.type || 'LOCAL_PK',
+        accountTitle: data.accountTitle || null,
+        receivingAddress: data.receivingAddress,
+        instructions: data.instructions || null,
+        minDeposit: data.minDeposit || 1.0,
+        isActive: data.isActive !== false,
+        sortOrder: data.sortOrder || 0,
+      },
+    });
+  }
+
+  async deleteNetwork(id: string) {
+    const hasDeposits = await this.prisma.deposit.count({ where: { paymentNetworkId: id } });
+    if (hasDeposits > 0) {
+      return this.prisma.paymentNetwork.update({
+        where: { id },
+        data: { isActive: false },
+      });
+    }
+    return this.prisma.paymentNetwork.delete({ where: { id } });
   }
 
   async findAll(params?: {
@@ -128,7 +190,26 @@ export class DepositsService {
       include: { network: true },
     });
 
-    // Run verification attempt
+    // If Pakistani local payment (JazzCash, EasyPaisa, Bank), route directly to MANUAL_REVIEW queue
+    if (network.type === 'LOCAL_PK') {
+      return this.prisma.deposit.update({
+        where: { id: deposit.id },
+        data: {
+          status: DepositStatus.MANUAL_REVIEW,
+          verificationData: {
+            method: network.name,
+            accountTitle: network.accountTitle,
+            receivingAddress: network.receivingAddress,
+            tid: cleanedHash,
+            type: 'LOCAL_PK',
+            currency: network.currency,
+          } as any,
+        },
+        include: { network: true },
+      });
+    }
+
+    // Run verification attempt for on-chain crypto
     const verification = await this.verifier.verifyTransaction({
       network: network.name,
       expectedDestinationAddress: network.receivingAddress,

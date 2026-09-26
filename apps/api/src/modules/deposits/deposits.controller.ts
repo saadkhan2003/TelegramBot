@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { DepositsService } from './deposits.service';
 import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
 import { DepositStatus } from '@telegram-store/shared';
@@ -14,13 +14,52 @@ export class DepositsController {
     return this.depositsService.getAllNetworksAdmin();
   }
 
+  @Post('networks')
+  @RequirePermissions('deposits.override')
+  async createNetwork(
+    @Body()
+    body: {
+      name: string;
+      chain: string;
+      currency?: string;
+      symbol?: string;
+      type?: string;
+      accountTitle?: string;
+      receivingAddress: string;
+      instructions?: string;
+      minDeposit?: number;
+      isActive?: boolean;
+      sortOrder?: number;
+    },
+  ) {
+    return this.depositsService.createNetwork(body);
+  }
+
   @Patch('networks/:id')
   @RequirePermissions('deposits.override')
   async updateNetwork(
     @Param('id') id: string,
-    @Body() body: { receivingAddress?: string; minDeposit?: number; isActive?: boolean },
+    @Body()
+    body: {
+      name?: string;
+      accountTitle?: string;
+      receivingAddress?: string;
+      instructions?: string;
+      minDeposit?: number;
+      isActive?: boolean;
+      currency?: string;
+      symbol?: string;
+      type?: string;
+      sortOrder?: number;
+    },
   ) {
     return this.depositsService.updateNetwork(id, body);
+  }
+
+  @Delete('networks/:id')
+  @RequirePermissions('deposits.override')
+  async deleteNetwork(@Param('id') id: string) {
+    return this.depositsService.deleteNetwork(id);
   }
 
   @Get()

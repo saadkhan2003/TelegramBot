@@ -173,21 +173,40 @@ export default function DepositsPage() {
                     {d.user?.telegramUsername ? `@${d.user.telegramUsername}` : d.user?.firstName || 'User'}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[#eff6fc] border border-[#c7e0f4] text-[#0078d4] font-semibold text-[11px]">
-                      <Coins className="h-3 w-3" />
-                      <span>{d.network?.name || 'Crypto'}</span>
-                    </span>
+                    {d.network?.chain === 'JAZZCASH' || d.network?.name?.includes('JazzCash') ? (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[#fdf3f2] border border-[#f8d2d4] text-[#d13438] font-bold text-[11px]">
+                        <span>📱</span>
+                        <span>JazzCash</span>
+                      </span>
+                    ) : d.network?.chain === 'EASYPAISA' || d.network?.name?.includes('EasyPaisa') ? (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[#dff6dd] border border-[#b4e6b2] text-[#107c10] font-bold text-[11px]">
+                        <span>🟢</span>
+                        <span>EasyPaisa</span>
+                      </span>
+                    ) : d.network?.chain === 'BANK_PK' || d.network?.name?.includes('Bank') ? (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[#eff6fc] border border-[#c7e0f4] text-[#0078d4] font-bold text-[11px]">
+                        <span>🏦</span>
+                        <span>Bank / Raast</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[#eff6fc] border border-[#c7e0f4] text-[#0078d4] font-semibold text-[11px]">
+                        <Coins className="h-3 w-3" />
+                        <span>{d.network?.name || 'Crypto'}</span>
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 font-mono text-[11px] text-[#0078d4]">
                     <div className="flex items-center gap-1.5">
-                      <span title={d.transactionHash}>
-                        {d.transactionHash ? `${d.transactionHash.slice(0, 10)}...${d.transactionHash.slice(-6)}` : '—'}
+                      <span title={d.transactionHash} className="font-semibold text-[#201f1e]">
+                        {d.transactionHash && d.transactionHash.length > 20
+                          ? `${d.transactionHash.slice(0, 8)}...${d.transactionHash.slice(-6)}`
+                          : d.transactionHash || '—'}
                       </span>
                       {d.transactionHash && (
                         <button
                           onClick={() => copyHash(d.transactionHash, d.id)}
                           className="p-1 rounded-[4px] hover:bg-[#eff6fc] text-[#605e5c] hover:text-[#0078d4]"
-                          title="Copy hash"
+                          title="Copy TID"
                         >
                           {copiedId === d.id ? (
                             <Check className="h-3 w-3 text-[#107c10]" />
@@ -250,6 +269,11 @@ export default function DepositsPage() {
                 <p className="text-xs text-[#605e5c] mt-0.5">
                   Customer: <span className="font-semibold text-[#0078d4]">{approveModal.customer}</span> ({approveModal.network})
                 </p>
+                {approveModal.txHash && (
+                  <p className="text-[11px] font-mono text-[#605e5c] mt-1">
+                    TID: <strong className="text-[#201f1e]">{approveModal.txHash}</strong>
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => setApproveModal({ open: false })}
@@ -261,15 +285,60 @@ export default function DepositsPage() {
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-[#201f1e] block mb-1 font-semibold">Verified Amount to Credit ($ USD)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[#201f1e] font-semibold">Amount to Credit ($ USD)</label>
+                  <span className="text-[10px] text-[#605e5c]">Rate: ~280 PKR = $1.00</span>
+                </div>
                 <input
                   type="number"
                   step="0.01"
-                  min="0.5"
+                  min="0.1"
                   value={creditAmount}
                   onChange={(e) => setCreditAmount(parseFloat(e.target.value) || 0)}
                   className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] font-bold text-sm focus:bg-white focus:outline-none focus:border-[#0078d4]"
                 />
+              </div>
+
+              {/* Quick PKR conversion buttons */}
+              <div>
+                <span className="text-[10px] text-[#605e5c] block mb-1">Quick PKR Presets:</span>
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCreditAmount(1.07)}
+                    className="px-2 py-0.5 rounded-[2px] bg-[#f3f2f1] hover:bg-[#edebe9] text-[10px] font-semibold text-[#201f1e]"
+                  >
+                    Rs. 300 ($1.07)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreditAmount(1.79)}
+                    className="px-2 py-0.5 rounded-[2px] bg-[#f3f2f1] hover:bg-[#edebe9] text-[10px] font-semibold text-[#201f1e]"
+                  >
+                    Rs. 500 ($1.79)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreditAmount(3.57)}
+                    className="px-2 py-0.5 rounded-[2px] bg-[#f3f2f1] hover:bg-[#edebe9] text-[10px] font-semibold text-[#201f1e]"
+                  >
+                    Rs. 1,000 ($3.57)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreditAmount(5.00)}
+                    className="px-2 py-0.5 rounded-[2px] bg-[#f3f2f1] hover:bg-[#edebe9] text-[10px] font-semibold text-[#201f1e]"
+                  >
+                    Rs. 1,400 ($5.00)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreditAmount(10.00)}
+                    className="px-2 py-0.5 rounded-[2px] bg-[#f3f2f1] hover:bg-[#edebe9] text-[10px] font-semibold text-[#201f1e]"
+                  >
+                    Rs. 2,800 ($10.00)
+                  </button>
+                </div>
               </div>
 
               <div>

@@ -128,44 +128,108 @@ async function main() {
 
   console.log(`👤 Admin created: ${defaultEmail}`);
 
-  // 3. Payment Networks
+  // 3. Payment Networks (Pakistani Local + Crypto)
   const networks = [
     {
-      name: 'USDT BEP20',
+      name: 'JazzCash (Pakistan)',
+      chain: 'JAZZCASH',
+      currency: 'PKR',
+      symbol: 'PKR',
+      type: 'LOCAL_PK',
+      accountTitle: 'Delux Store / Saad',
+      receivingAddress: '03001234567',
+      instructions: '1. Send PKR to JazzCash account above via JazzCash App or *786#.\n2. Choose "Online Purchase" or "Money Transfer".\n3. Reply to this bot with your 11/12-digit Transaction ID (TID) from the SMS.',
+      minDeposit: 300,
+      confirmationsRequired: 1,
+      isActive: true,
+      sortOrder: 1,
+    },
+    {
+      name: 'EasyPaisa (Pakistan)',
+      chain: 'EASYPAISA',
+      currency: 'PKR',
+      symbol: 'PKR',
+      type: 'LOCAL_PK',
+      accountTitle: 'Delux Store / Saad',
+      receivingAddress: '03451234567',
+      instructions: '1. Open EasyPaisa app and transfer to account number above.\n2. In payment purpose select "Online Purchase".\n3. Reply to this bot with your 11-digit TRX ID from the payment SMS.',
+      minDeposit: 300,
+      confirmationsRequired: 1,
+      isActive: true,
+      sortOrder: 2,
+    },
+    {
+      name: 'Bank Transfer / Raast (Pakistan)',
+      chain: 'BANK_PK',
+      currency: 'PKR',
+      symbol: 'PKR',
+      type: 'LOCAL_PK',
+      accountTitle: 'Muhammad Saad',
+      receivingAddress: 'PK00MEZN0001234567890123 / Raast: 03001234567',
+      instructions: '1. Transfer from any Pakistani bank (Meezan, HBL, Nayapay, Sadapay, etc.) using IBAN or Raast ID.\n2. Reply to this bot with your Bank Reference / Transaction ID.',
+      minDeposit: 500,
+      confirmationsRequired: 1,
+      isActive: true,
+      sortOrder: 3,
+    },
+    {
+      name: 'USDT BEP20 (Binance Smart Chain)',
       chain: 'BSC',
       currency: 'USDT',
       symbol: 'USDT',
+      type: 'CRYPTO',
+      accountTitle: null,
       receivingAddress: '0x71C8fb8613330F8970C43c7B1028711E8857Ea24',
+      instructions: 'Send USDT on BSC (BEP20 network). Once sent, submit transaction hash (TXID).',
       minDeposit: 1.0,
       confirmationsRequired: 15,
-      isActive: true,
+      isActive: false,
+      sortOrder: 10,
     },
     {
-      name: 'USDT TRC20',
+      name: 'USDT TRC20 (TRON Network)',
       chain: 'TRON',
       currency: 'USDT',
       symbol: 'USDT',
+      type: 'CRYPTO',
+      accountTitle: null,
       receivingAddress: 'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW6',
+      instructions: 'Send USDT on TRON (TRC20 network). Once sent, submit transaction hash (TXID).',
       minDeposit: 5.0,
       confirmationsRequired: 20,
-      isActive: true,
+      isActive: false,
+      sortOrder: 11,
     },
     {
-      name: 'TON',
+      name: 'TON (The Open Network)',
       chain: 'TON',
       currency: 'TON',
       symbol: 'TON',
+      type: 'CRYPTO',
+      accountTitle: null,
       receivingAddress: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N',
+      instructions: 'Send TON coins to address. Submit TXID.',
       minDeposit: 0.5,
       confirmationsRequired: 1,
-      isActive: true,
+      isActive: false,
+      sortOrder: 12,
     },
   ];
 
   for (const net of networks) {
-    const existing = await prisma.paymentNetwork.findFirst({ where: { name: net.name } });
+    const existing = await prisma.paymentNetwork.findFirst({ where: { chain: net.chain } });
     if (!existing) {
       await prisma.paymentNetwork.create({ data: net });
+    } else {
+      await prisma.paymentNetwork.update({
+        where: { id: existing.id },
+        data: {
+          type: net.type,
+          sortOrder: net.sortOrder,
+          accountTitle: existing.accountTitle || net.accountTitle,
+          instructions: existing.instructions || net.instructions,
+        },
+      });
     }
   }
 
@@ -281,12 +345,14 @@ async function main() {
 
   // 6. System Settings
   const defaultSettings = [
-    { key: 'store_name', value: 'Apex Digital Store', description: 'Store branding name' },
-    { key: 'support_username', value: '@ApexSupportBot', description: 'Official support handle' },
+    { key: 'store_name', value: 'Delux Store', description: 'Store branding name' },
+    { key: 'support_username', value: '@thedeluxstorebot', description: 'Official support handle' },
     { key: 'referrals_enabled', value: true, description: 'Whether referral system is active' },
     { key: 'referral_rate', value: 10.0, description: 'Default commission percentage' },
     { key: 'minimum_deposit', value: 1.0, description: 'Minimum deposit in USD' },
     { key: 'maintenance_mode', value: false, description: 'Put bot in maintenance mode' },
+    { key: 'usd_to_pkr_rate', value: 280.0, description: 'USD to PKR conversion rate for Pakistani audience' },
+    { key: 'active_payment_mode', value: 'LOCAL_PK_FIRST', description: 'Payment modes display strategy in bot (LOCAL_PK_FIRST, LOCAL_PK_ONLY, CRYPTO_ONLY, ALL)' },
   ];
 
   for (const s of defaultSettings) {
