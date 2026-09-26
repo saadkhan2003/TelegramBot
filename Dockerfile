@@ -34,7 +34,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Generate Prisma Client
-RUN pnpm --filter @telegram-store/database db:generate
+RUN pnpm db:generate
 
 # Build all packages and applications for production
 RUN pnpm -r run build

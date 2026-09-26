@@ -65,7 +65,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
     command: >
-      sh -c "pnpm --filter @telegram-store/database db:migrate && node dist/main.js"
+      sh -c "pnpm --filter @telegram-store/database migrate:deploy && node dist/main.js"
     ports:
       - '4000:4000'
     networks:
