@@ -1,0 +1,26 @@
+{
+  "name": "@telegram-store/telegram-bot",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@telegram-store/config": "workspace:*",
+    "@telegram-store/database": "workspace:*",
+    "@telegram-store/inventory": "workspace:*",
+    "@telegram-store/localization": "workspace:*",
+    "@telegram-store/payments": "workspace:*",
+    "@telegram-store/shared": "workspace:*",
+    "dotenv": "^16.4.7",
+    "grammy": "^1.35.0",
+    "ioredis": "^5.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,53 @@
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { SettingsService } from './settings.service';
+import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
+
+@Controller('admin')
+@UseGuards(AdminAuthGuard)
+export class SettingsController {
+  constructor(private readonly settingsService: SettingsService) {}
+
+  @Get('settings')
+  @RequirePermissions('settings.manage')
+  async getSettings() {
+    return this.settingsService.getAllSettings();
+  }
+
+  @Patch('settings/:key')
+  @RequirePermissions('settings.manage')
+  async updateSetting(
+    @Param('key') key: string,
+    @Body() body: { value: any },
+    @Req() req: any,
+  ) {
+    return this.settingsService.updateSetting(key, body.value, req.admin.sub);
+  }
+
+  @Get('translations')
+  @RequirePermissions('settings.manage')
+  async getTranslations(@Query('languageCode') languageCode?: string) {
+    return this.settingsService.getTranslations(languageCode);
+  }
+
+  @Post('translations')
+  @RequirePermissions('settings.manage')
+  async updateTranslation(
+    @Body() body: { key: string; languageCode: string; value: string },
+  ) {
+    return this.settingsService.updateTranslation(body.key, body.languageCode, body.value);
+  }
+
+  @Get('audit-logs')
+  @RequirePermissions('admins.manage')
+  async getAuditLogs(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('resourceType') resourceType?: string,
+  ) {
+    return this.settingsService.getAuditLogs({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+      resourceType,
+    });
+  }
+}

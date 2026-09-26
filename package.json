@@ -1,0 +1,25 @@
+{
+  "name": "telegram-digital-store-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Telegram Digital Store + Web Admin Control Panel",
+  "scripts": {
+    "dev:api": "pnpm --filter @telegram-store/api dev",
+    "dev:bot": "pnpm --filter @telegram-store/telegram-bot dev",
+    "dev:admin": "pnpm --filter @telegram-store/admin-web dev",
+    "dev:worker": "pnpm --filter @telegram-store/worker dev",
+    "build": "pnpm -r run build",
+    "db:generate": "pnpm --filter @telegram-store/database generate",
+    "db:migrate": "pnpm --filter @telegram-store/database migrate",
+    "db:seed": "pnpm --filter @telegram-store/database seed",
+    "db:studio": "pnpm --filter @telegram-store/database studio",
+    "docker:up": "docker compose -f infra/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infra/docker-compose.yml down",
+    "docker:logs": "docker compose -f infra/docker-compose.yml logs -f"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "pnpm@12.4.2"
+}
