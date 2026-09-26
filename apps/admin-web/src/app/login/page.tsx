@@ -168,21 +168,18 @@ export default function LoginPage() {
       <div className="w-full max-w-[440px] flex flex-col items-center z-10 my-auto sm:my-0">
         {/* Main Microsoft Auth Card */}
         <div className="w-full bg-white p-6 sm:p-11 shadow-[0_2px_6px_rgba(0,0,0,0.15)] sm:shadow-[0_2px_6px_rgba(0,0,0,0.2)] border border-[#edebe9] rounded-[4px] sm:rounded-[2px] text-[#1b1a19] transition-all">
-          {/* Stack & Scale Brand Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 shrink-0 flex items-center justify-center">
-              <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="8" y="72" width="48" height="12" rx="3.5" fill="#1b1a19" fillOpacity="0.22" />
-                <rect x="26" y="47" width="48" height="13" rx="3.5" fill="#1b1a19" fillOpacity="0.50" />
-                <rect x="44" y="22" width="48" height="14" rx="3.5" fill="#1b1a19" />
-              </svg>
+          {/* Delux Store Brand Header */}
+          <div className="flex items-center gap-2.5 mb-6">
+            <div className="h-8 w-8 rounded-[7px] bg-[#051329] border border-[#0078d4]/40 overflow-hidden shadow-xs p-[1.5px] shrink-0">
+              <img
+                src="/icons/icon-192.png"
+                alt="Delux Store"
+                className="h-full w-full object-cover rounded-[5.5px]"
+              />
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-[18px] sm:text-[19px] tracking-tight text-[#1b1a19]">
-                Stack<span className="text-[#8a8886] font-medium mx-[3px] text-[0.88em]">&amp;</span>Scale
-              </span>
-              <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-[2px] bg-[#f3f2f1] text-[#605e5c] border border-[#edebe9]">
-                Console
+                Delux Store
               </span>
             </div>
           </div>
