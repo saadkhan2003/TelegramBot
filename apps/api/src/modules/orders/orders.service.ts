@@ -14,6 +14,7 @@ import {
 } from '@telegram-store/shared';
 import { Prisma } from '@telegram-store/database';
 import { decryptPayload, encryptPayload } from '@telegram-store/inventory';
+import { TelegramNotifyService } from '../../common/telegram-notify.service';
 
 @Injectable()
 export class OrdersService {
@@ -22,6 +23,7 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly walletsService: WalletsService,
+    private readonly telegramNotify: TelegramNotifyService,
   ) {
     this.encryptionKey =
       process.env.ENCRYPTION_KEY ||
@@ -345,7 +347,7 @@ export class OrdersService {
     notes?: string;
     adminId: string;
   }) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: params.orderId },
         include: { items: { include: { product: true } }, user: true },
@@ -399,5 +401,34 @@ export class OrdersService {
         deliveredPayload: params.deliveryPayload,
       };
     });
+
+    // Send instant Telegram notification to the customer with delivered keys
+    try {
+      const tgUserId = result.customerTelegramId;
+      if (tgUserId) {
+        await this.telegramNotify.sendMessage({
+          telegramUserId: tgUserId,
+          storeId: result.order?.storeId || undefined,
+          text:
+            `✅ *Order Fulfilled & Delivered!*\n` +
+            `━━━━━━━━━━━━━━━━━━━━\n` +
+            `📦 *Order #:* \`#${result.order.orderNumber}\`\n` +
+            `🛍 *Product:* *${result.productName || 'Digital License'}*\n\n` +
+            `🔑 *Your Delivery / License Details:*\n` +
+            `\`\`\`\n${result.deliveredPayload}\n\`\`\`\n\n` +
+            `Thank you for shopping with us! If you need warranty or assistance, visit 💬 Support.`,
+          replyMarkup: {
+            inline_keyboard: [
+              [{ text: '📦 View Order', callback_data: `order_detail_${result.order.id}` }],
+              [{ text: '🏠 Main Menu', callback_data: 'nav_main' }],
+            ],
+          },
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to dispatch order fulfillment Telegram notification:', err.message);
+    }
+
+    return result;
   }
 }

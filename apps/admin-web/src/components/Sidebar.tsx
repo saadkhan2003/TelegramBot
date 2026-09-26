@@ -35,7 +35,7 @@ const navigationGroups = [
   {
     title: 'Finance & Treasury',
     items: [
-      { name: 'Crypto Deposits', href: '/deposits', icon: ArrowDownCircle },
+      { name: 'Deposits & Payments', href: '/deposits', icon: ArrowDownCircle },
       { name: 'Wallets & Ledger', href: '/wallets', icon: Wallet },
     ],
   },

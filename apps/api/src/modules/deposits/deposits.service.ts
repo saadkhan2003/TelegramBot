@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
+import { TelegramNotifyService } from '../../common/telegram-notify.service';
 import { DepositStatus, generateDepositNumber, TxDirection, WalletTxType } from '@telegram-store/shared';
 import { BlockchainPaymentVerifier } from '@telegram-store/payments';
 
@@ -11,6 +12,7 @@ export class DepositsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly walletsService: WalletsService,
+    private readonly telegramNotify: TelegramNotifyService,
   ) {}
 
   async getNetworks() {
@@ -241,10 +243,10 @@ export class DepositsService {
     verificationData?: any,
     adminId?: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const updatedDeposit = await this.prisma.$transaction(async (tx) => {
       const deposit = await tx.deposit.findUnique({
         where: { id: depositId },
-        include: { network: true },
+        include: { network: true, wallet: { include: { user: true } } },
       });
 
       if (!deposit) throw new NotFoundException('Deposit not found');
@@ -264,7 +266,7 @@ export class DepositsService {
         createdByAdminId: adminId,
       });
 
-      const updatedDeposit = await tx.deposit.update({
+      const updated = await tx.deposit.update({
         where: { id: depositId },
         data: {
           status: DepositStatus.CREDITED,
@@ -273,10 +275,65 @@ export class DepositsService {
           verifiedAt: new Date(),
           verificationData: verificationData || deposit.verificationData,
         },
-        include: { network: true, wallet: true },
+        include: {
+          network: true,
+          wallet: {
+            include: { user: true },
+          },
+        },
       });
 
-      return updatedDeposit;
+      return updated;
     });
+
+    // Send instant Telegram notification to the customer
+    try {
+      const tgUserId = updatedDeposit.wallet?.user?.telegramUserId;
+      if (tgUserId) {
+        const [rateSetting, currentWallet] = await Promise.all([
+          this.prisma.systemSetting.findUnique({ where: { key: 'usd_to_pkr_rate' } }),
+          this.prisma.wallet.findUnique({ where: { id: updatedDeposit.walletId } }),
+        ]);
+
+        const pkrRate = rateSetting ? Number(rateSetting.value) || 280 : 280;
+        const newBalance = Number(currentWallet?.cachedBalance || 0);
+        const newBalancePkr = (newBalance * pkrRate).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        const creditedUsd = Number(verifiedAmount).toFixed(2);
+
+        const vData: any = updatedDeposit.verificationData || {};
+        const pkrPaid = vData?.pkrAmount
+          ? Number(vData.pkrAmount).toLocaleString()
+          : (Number(verifiedAmount) * pkrRate).toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+        const message =
+          `🎉 *Payment Confirmed & Balance Credited!*\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `🧾 *Deposit Ref:* \`#${updatedDeposit.depositNumber}\`\n` +
+          `💳 *Payment Method:* *${updatedDeposit.network.name}*\n` +
+          `💵 *Local Paid Amount:* *Rs. ${pkrPaid} PKR*\n` +
+          `💰 *Wallet Credited:* *$${creditedUsd} USD*\n` +
+          `👛 *New Available Balance:* *$${newBalance.toFixed(2)} USD* (Rs. ${newBalancePkr} PKR)\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `✅ Your balance is live! Tap below to start browsing products.`;
+
+        await this.telegramNotify.sendMessage({
+          telegramUserId: tgUserId,
+          text: message,
+          replyMarkup: {
+            inline_keyboard: [
+              [
+                { text: '🛒 Browse Products', callback_data: 'nav_buy' },
+                { text: '💼 My Wallet', callback_data: 'nav_wallet' },
+              ],
+              [{ text: '🏠 Main Menu', callback_data: 'nav_main' }],
+            ],
+          },
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to dispatch deposit Telegram notification:', err.message);
+    }
+
+    return updatedDeposit;
   }
 }

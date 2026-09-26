@@ -30,6 +30,9 @@ export default function DepositsPage() {
     customer?: string;
     network?: string;
     txHash?: string;
+    pkrAmount?: number;
+    pkrRate?: number;
+    method?: string;
   }>({ open: false });
   const [creditAmount, setCreditAmount] = useState<number>(10);
   const [creditNotes, setCreditNotes] = useState('Approved via admin control panel');
@@ -60,18 +63,31 @@ export default function DepositsPage() {
   }, []);
 
   const openApprove = (d: any) => {
-    const reported = Number(d.reportedAmount || d.verifiedAmount || 10);
+    const vData = d.verificationData || {};
+    const pkrRate = Number(vData.pkrRate || 280);
+    let calculatedUsd = Number(d.verifiedAmount || d.reportedAmount || 0);
+
+    if (!calculatedUsd && vData.pkrAmount) {
+      calculatedUsd = Number((Number(vData.pkrAmount) / pkrRate).toFixed(2));
+    }
+    if (!calculatedUsd || calculatedUsd <= 0) {
+      calculatedUsd = 10;
+    }
+
     setApproveModal({
       open: true,
       depositId: d.id,
       depositNumber: d.depositNumber,
-      reportedAmount: reported,
-      customer: d.user?.telegramUsername ? `@${d.user.telegramUsername}` : d.user?.firstName,
+      reportedAmount: calculatedUsd,
+      customer: d.user?.telegramUsername ? `@${d.user.telegramUsername}` : d.user?.firstName || 'User',
       network: d.network?.name,
       txHash: d.transactionHash,
+      pkrAmount: vData.pkrAmount ? Number(vData.pkrAmount) : undefined,
+      pkrRate,
+      method: d.network?.name,
     });
-    setCreditAmount(reported);
-    setCreditNotes('Approved via admin control panel');
+    setCreditAmount(calculatedUsd);
+    setCreditNotes(`Approved ${d.network?.name || 'Local'} deposit #${d.depositNumber}`);
   };
 
   const handleManualCredit = async () => {
@@ -116,9 +132,9 @@ export default function DepositsPage() {
     <div className="space-y-6 max-w-7xl pb-12">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-[#201f1e]">Deposit Verifications</h2>
+        <h2 className="text-xl font-bold tracking-tight text-[#201f1e]">Deposits & Payment Verification</h2>
         <p className="text-xs text-[#605e5c] mt-0.5">
-          Cryptocurrency deposits, on-chain transaction hash verification, and manual approval queue.
+          Verify and credit customer deposits: JazzCash, EasyPaisa, Pakistani Banks (Raast), and Cryptocurrency on-chain ledger.
         </p>
       </div>
 
@@ -217,8 +233,49 @@ export default function DepositsPage() {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 font-bold text-[#201f1e]">
-                    ${Number(d.verifiedAmount ?? d.reportedAmount ?? 0).toFixed(2)}
+                  <td className="px-6 py-4">
+                    {(() => {
+                      const vData = d.verificationData || {};
+                      const pkrAmount = vData.pkrAmount;
+                      const usdAmount = Number(d.verifiedAmount ?? d.reportedAmount ?? 0);
+
+                      if (d.status === 'CREDITED') {
+                        return (
+                          <div>
+                            <span className="font-bold text-[#107c10]">${usdAmount.toFixed(2)} USD</span>
+                            {pkrAmount && (
+                              <span className="text-[11px] text-[#605e5c] block font-normal">
+                                Rs. {Number(pkrAmount).toLocaleString()} PKR
+                              </span>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      if (pkrAmount) {
+                        return (
+                          <div>
+                            <span className="font-bold text-[#201f1e]">Rs. {Number(pkrAmount).toLocaleString()} PKR</span>
+                            <span className="text-[11px] text-[#0078d4] block font-medium">
+                              ~${usdAmount > 0 ? usdAmount.toFixed(2) : (Number(pkrAmount) / 280).toFixed(2)} USD
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      if (usdAmount > 0) {
+                        return <span className="font-bold text-[#201f1e]">${usdAmount.toFixed(2)} USD</span>;
+                      }
+
+                      return (
+                        <div>
+                          <span className="inline-flex px-1.5 py-0.5 rounded-[2px] bg-[#fff4ce] text-[#8a3707] font-semibold text-[10px]">
+                            Pending Review
+                          </span>
+                          <span className="text-[10px] text-[#605e5c] block mt-0.5">Verify TID amount</span>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4">
                     <span
@@ -284,6 +341,18 @@ export default function DepositsPage() {
             </div>
 
             <div className="space-y-3 text-xs">
+              {approveModal.pkrAmount && (
+                <div className="p-2.5 rounded-[4px] bg-[#eff6fc] border border-[#c7e0f4] flex items-center justify-between text-xs">
+                  <span className="text-[#0078d4] font-semibold">Customer Paid (Reported):</span>
+                  <span className="font-bold text-[#201f1e]">
+                    Rs. {approveModal.pkrAmount.toLocaleString()} PKR{' '}
+                    <span className="text-[#107c10] font-medium">
+                      (~${(approveModal.pkrAmount / (approveModal.pkrRate || 280)).toFixed(2)} USD)
+                    </span>
+                  </span>
+                </div>
+              )}
+
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-[#201f1e] font-semibold">Amount to Credit ($ USD)</label>

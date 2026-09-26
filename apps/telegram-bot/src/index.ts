@@ -664,11 +664,15 @@ bot.callbackQuery(/^deposit_(.+)$/, async (ctx) => {
       `💵 *Minimum Deposit:* Rs. ${minPkr} PKR (~$${minUsd} USD)\n` +
       `💱 *Current Rate:* $1.00 USD = Rs. ${pkrRate} PKR\n\n` +
       `📌 *Instructions / طریقہ کار:*\n` +
-      `${network.instructions || 'Send amount to account above and reply here with Transaction ID.'}\n\n` +
+      `${network.instructions || 'Send amount to account above and reply here with your payment details.'}\n\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
-      `✍️ *What to do after sending payment:*\n` +
-      `Please reply to this message with your *Transaction ID (TID / TRX ID)* from your SMS/Receipt.\n\n` +
-      `Example: \`12345678901\` or reference number.`;
+      `✍️ *After sending payment, reply with:*\n` +
+      `Your *Paid Amount (in PKR)* and *Transaction ID (TID)*, or send a photo screenshot of your receipt!\n\n` +
+      `*Examples:*\n` +
+      `• \`2800 1234567890\` (Rs. 2,800 with TID)\n` +
+      `• \`1400\` (Rs. 1,400)\n` +
+      `• Or paste TID: \`1029384756\`\n` +
+      `• Or send payment receipt photo/screenshot 📸`;
 
     const kb = new InlineKeyboard().text(t('menu.back', user.preferredLanguage), 'nav_wallet');
 
@@ -929,7 +933,7 @@ bot.on('message:text', async (ctx) => {
 
   // 0. Pakistani Local Payment TID Handler (JazzCash, EasyPaisa, Bank Transfer)
   if (currentState.state === 'WAITING_FOR_LOCAL_TID') {
-    const tid = ctx.message.text.trim();
+    const rawInput = ctx.message.text.trim();
     const networkId = currentState.metadata?.networkId;
     const pkrRate = currentState.metadata?.pkrRate || 280;
     userStates.delete(user.telegramUserId);
@@ -937,14 +941,46 @@ bot.on('message:text', async (ctx) => {
     const network = await prisma.paymentNetwork.findUnique({ where: { id: networkId } });
     if (!network) return;
 
-    // Check duplicate TID
-    const dup = await prisma.deposit.findFirst({
-      where: { paymentNetworkId: network.id, transactionHash: tid },
-    });
+    // Parse amount and TID intelligently
+    const numbers = rawInput.match(/\d+/g) || [];
+    let pkrAmount: number = Number(network.minDeposit || 300);
+    let tid = rawInput;
 
-    if (dup) {
-      await ctx.reply('⚠️ This Transaction ID (TID) has already been submitted or credited.');
-      return;
+    const num0 = numbers[0] || '';
+    const num1 = numbers[1] || '';
+
+    if (numbers.length >= 2) {
+      const firstNum = parseInt(num0, 10);
+      const secondNum = parseInt(num1, 10);
+      if (firstNum <= 100000 && num0.length <= 6) {
+        pkrAmount = firstNum;
+        tid = numbers.slice(1).join('');
+      } else if (secondNum <= 100000 && num1.length <= 6) {
+        pkrAmount = secondNum;
+        tid = num0;
+      }
+    } else if (numbers.length === 1 && num0) {
+      const singleNum = parseInt(num0, 10);
+      if (num0.length <= 5 && singleNum >= 100 && singleNum <= 100000) {
+        pkrAmount = singleNum;
+        tid = `LOCAL-${Date.now().toString().slice(-6)}`;
+      } else {
+        tid = num0;
+      }
+    }
+
+    const usdAmount = Number((pkrAmount / pkrRate).toFixed(2));
+
+    // Check duplicate TID if user entered a real transaction hash
+    if (tid && !tid.startsWith('LOCAL-')) {
+      const dup = await prisma.deposit.findFirst({
+        where: { paymentNetworkId: network.id, transactionHash: tid },
+      });
+
+      if (dup) {
+        await ctx.reply('⚠️ This Transaction ID (TID) has already been submitted or credited.');
+        return;
+      }
     }
 
     const depositNumber = generateDepositNumber();
@@ -956,6 +992,7 @@ bot.on('message:text', async (ctx) => {
         paymentNetworkId: network.id,
         depositAddress: network.receivingAddress,
         transactionHash: tid,
+        reportedAmount: usdAmount,
         status: 'MANUAL_REVIEW',
         verificationData: {
           method: network.name,
@@ -965,20 +1002,24 @@ bot.on('message:text', async (ctx) => {
           type: 'LOCAL_PK',
           currency: network.currency,
           pkrRate,
+          pkrAmount,
+          usdAmount,
+          storeId: store?.id || null,
         },
       },
     });
 
     const receiptMessage =
-      `✅ *Deposit Request Submitted!*\n` +
+      `✅ *Deposit Request Received!*\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `🧾 Deposit #: *#${depositNumber}*\n` +
       `📱 Method: *${network.name}*\n` +
-      `👤 Account Title: *${network.accountTitle || 'Store'}*\n` +
-      `🔢 Transaction ID (TID): \`${tid}\`\n\n` +
+      `💵 Paid Amount: *Rs. ${pkrAmount.toLocaleString()} PKR* (~$${usdAmount.toFixed(2)} USD)\n` +
+      `🔢 Transaction ID (TID): \`${tid}\`\n` +
+      `💱 Exchange Rate: $1.00 USD = Rs. ${pkrRate} PKR\n\n` +
       `⏳ *Status: Pending Verification*\n` +
-      `Our admin team will verify your payment against ${network.name} and credit your balance within 5-15 minutes.\n` +
-      `You will receive an automatic message here as soon as it is credited!`;
+      `Our admin team will verify your payment against ${network.name} and credit your balance (*$${usdAmount.toFixed(2)} USD*) within 5-15 minutes.\n` +
+      `You will receive an instant notification here once approved!`;
 
     const kb = new InlineKeyboard()
       .text(t('menu.orders', user.preferredLanguage), 'nav_orders')
@@ -1141,6 +1182,18 @@ bot.on('message:photo', async (ctx) => {
     const network = await prisma.paymentNetwork.findUnique({ where: { id: networkId } });
     if (!network) return;
 
+    // Try extracting amount from caption if provided
+    const numbers = caption.match(/\d+/g) || [];
+    let pkrAmount: number = Number(network.minDeposit || 300);
+    const num0 = numbers[0] || '';
+    if (num0) {
+      const parsedNum = parseInt(num0, 10);
+      if (parsedNum >= 100 && parsedNum <= 100000) {
+        pkrAmount = parsedNum;
+      }
+    }
+    const usdAmount = Number((pkrAmount / pkrRate).toFixed(2));
+
     const tid = caption || `SCREENSHOT-${fileId.slice(-8)}`;
     const depositNumber = generateDepositNumber();
     await prisma.deposit.create({
@@ -1151,6 +1204,7 @@ bot.on('message:photo', async (ctx) => {
         paymentNetworkId: network.id,
         depositAddress: network.receivingAddress,
         transactionHash: tid,
+        reportedAmount: usdAmount,
         status: 'MANUAL_REVIEW',
         verificationData: {
           method: network.name,
@@ -1161,6 +1215,9 @@ bot.on('message:photo', async (ctx) => {
           type: 'LOCAL_PK',
           currency: network.currency,
           pkrRate,
+          pkrAmount,
+          usdAmount,
+          storeId: store?.id || null,
         },
       },
     });
@@ -1171,7 +1228,8 @@ bot.on('message:photo', async (ctx) => {
       `🧾 Deposit #: *#${depositNumber}*\n` +
       `📱 Method: *${network.name}*\n` +
       `👤 Account Title: *${network.accountTitle || 'Store'}*\n` +
-      (caption ? `🔢 TID/Notes: \`${caption}\`\n\n` : '\n') +
+      `💵 Estimated Amount: *Rs. ${pkrAmount.toLocaleString()} PKR* (~$${usdAmount.toFixed(2)} USD)\n` +
+      (caption ? `🔢 Notes: \`${caption}\`\n\n` : '\n') +
       `⏳ *Status: Pending Verification*\n` +
       `Our admin team will review your payment screenshot and credit your balance within 5-15 minutes!\n` +
       `You will receive an instant notification here once approved.`;
