@@ -131,4 +131,26 @@ export class InventoryService {
       data: { status },
     });
   }
+
+  async updateItem(
+    id: string,
+    data: {
+      purchaseCost?: number | null;
+      status?: InventoryStatus;
+      purchaseReference?: string | null;
+    },
+  ) {
+    const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException('Inventory item not found');
+
+    return this.prisma.inventoryItem.update({
+      where: { id },
+      data: {
+        ...(data.purchaseCost !== undefined ? { purchaseCost: data.purchaseCost } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.purchaseReference !== undefined ? { purchaseReference: data.purchaseReference } : {}),
+      },
+      include: { product: true },
+    });
+  }
 }

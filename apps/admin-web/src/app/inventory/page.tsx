@@ -14,6 +14,7 @@ import {
   Check,
   Loader2,
   X,
+  Pencil,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
 
@@ -34,8 +35,16 @@ export default function InventoryPage() {
   const [selectedProductId, setSelectedProductId] = useState('');
   const [rawPaste, setRawPaste] = useState('');
   const [delimiter, setDelimiter] = useState('|');
+  const [purchaseCost, setPurchaseCost] = useState('');
+  const [purchaseReference, setPurchaseReference] = useState('');
   const [validationResult, setValidationResult] = useState<any>(null);
   const [importing, setImporting] = useState(false);
+
+  // Edit item cost modal state
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [editCostValue, setEditCostValue] = useState('');
+  const [editReferenceValue, setEditReferenceValue] = useState('');
+  const [updatingCost, setUpdatingCost] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -119,17 +128,43 @@ export default function InventoryPage() {
           productId: selectedProductId,
           rawContent: rawPaste,
           delimiter,
+          purchaseCost: purchaseCost.trim() !== '' ? parseFloat(purchaseCost) : undefined,
+          purchaseReference: purchaseReference.trim() || undefined,
         }),
       });
       showToast(`✓ Success! Encrypted & saved ${res.importedCount} inventory items!`);
       setShowImportModal(false);
       setRawPaste('');
+      setPurchaseCost('');
+      setPurchaseReference('');
       setValidationResult(null);
       loadData();
     } catch (err: any) {
       showToast(`Import failed: ${err.message}`, 'error');
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleSaveCost = async () => {
+    if (!editingItem) return;
+    setUpdatingCost(true);
+    try {
+      const parsedCost = editCostValue.trim() === '' ? null : parseFloat(editCostValue);
+      await fetchApi(`/admin/inventory/${editingItem.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          purchaseCost: parsedCost,
+          purchaseReference: editReferenceValue.trim() || null,
+        }),
+      });
+      showToast('✓ Wholesale cost updated successfully!');
+      setEditingItem(null);
+      loadData();
+    } catch (err: any) {
+      showToast(`Failed to update cost: ${err.message}`, 'error');
+    } finally {
+      setUpdatingCost(false);
     }
   };
 
@@ -238,7 +273,22 @@ export default function InventoryPage() {
                       {item.id.slice(0, 8)}...
                     </td>
                     <td className="px-6 py-4 text-[#605e5c]">
-                      {item.purchaseCost ? `$${Number(item.purchaseCost).toFixed(2)}` : '—'}
+                      <div className="flex items-center gap-1.5 group">
+                        <span className="font-medium text-[#201f1e]">
+                          {item.purchaseCost ? `$${Number(item.purchaseCost).toFixed(2)}` : '—'}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setEditingItem(item);
+                            setEditCostValue(item.purchaseCost ? String(item.purchaseCost) : '');
+                            setEditReferenceValue(item.purchaseReference || '');
+                          }}
+                          title="Edit Wholesale Rate"
+                          className="opacity-70 group-hover:opacity-100 p-1 rounded hover:bg-[#edebe9] text-[#0078d4] transition"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -339,14 +389,49 @@ export default function InventoryPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="text-[#201f1e] block mb-1 font-semibold">Delimiter (default is |)</label>
-                <input
-                  type="text"
-                  value={delimiter}
-                  onChange={(e) => setDelimiter(e.target.value)}
-                  className="w-24 bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-1">
+                  <label className="text-[#201f1e] block mb-1 font-semibold">Delimiter</label>
+                  <input
+                    type="text"
+                    value={delimiter}
+                    onChange={(e) => setDelimiter(e.target.value)}
+                    className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
+                  />
+                </div>
+
+                <div className="sm:col-span-1">
+                  <label className="text-[#201f1e] block mb-1 font-semibold flex items-center justify-between">
+                    <span>Wholesale Cost ($)</span>
+                    <span className="text-[10px] text-[#605e5c] font-normal">Optional</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#605e5c] text-xs font-semibold">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={purchaseCost}
+                      onChange={(e) => setPurchaseCost(e.target.value)}
+                      placeholder="e.g. 8.00"
+                      className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] pl-6 pr-2 py-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
+                    />
+                  </div>
+                </div>
+
+                <div className="sm:col-span-1">
+                  <label className="text-[#201f1e] block mb-1 font-semibold flex items-center justify-between">
+                    <span>Supplier / Batch</span>
+                    <span className="text-[10px] text-[#605e5c] font-normal">Optional</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={purchaseReference}
+                    onChange={(e) => setPurchaseReference(e.target.value)}
+                    placeholder="e.g. Vendor A"
+                    className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
+                  />
+                </div>
               </div>
 
               <div>
@@ -411,6 +496,83 @@ export default function InventoryPage() {
                   <span>{importing ? 'Encrypting & Saving...' : 'Import Valid Items'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Wholesale Cost Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-[#edebe9] rounded-[4px] p-5 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+            <div className="border-b border-[#edebe9] pb-2.5 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-[#201f1e]">Update Wholesale Rate</h3>
+                <p className="text-[11px] text-[#605e5c] mt-0.5 truncate max-w-[240px]">
+                  {editingItem.product?.name} ({editingItem.id.slice(0, 8)}...)
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingItem(null)}
+                className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-[#201f1e] block mb-1 font-semibold">
+                  Wholesale Cost per Unit ($)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#605e5c] text-xs font-semibold">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editCostValue}
+                    onChange={(e) => setEditCostValue(e.target.value)}
+                    placeholder="e.g. 8.00"
+                    className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] pl-6 pr-2 py-1.5 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
+                  />
+                </div>
+                <p className="text-[10px] text-[#605e5c] mt-1">
+                  Leave blank or 0 to clear the wholesale cost.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-[#201f1e] block mb-1 font-semibold">
+                  Supplier / Batch Reference (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={editReferenceValue}
+                  onChange={(e) => setEditReferenceValue(e.target.value)}
+                  placeholder="e.g. Vendor A, Batch 2"
+                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#edebe9]">
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="px-3 py-1.5 rounded-[4px] border border-[#d2d0ce] hover:bg-[#f3f2f1] text-[#605e5c] text-xs font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={updatingCost}
+                onClick={handleSaveCost}
+                className="px-3.5 py-1.5 rounded-[4px] bg-[#0078d4] hover:bg-[#106ebe] text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5"
+              >
+                {updatingCost && <Loader2 className="h-3 w-3 animate-spin" />}
+                <span>Save Wholesale Rate</span>
+              </button>
             </div>
           </div>
         </div>

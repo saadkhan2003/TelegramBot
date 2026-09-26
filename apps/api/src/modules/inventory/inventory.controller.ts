@@ -62,4 +62,18 @@ export class InventoryController {
   ) {
     return this.inventoryService.updateStatus(id, body.status);
   }
+
+  @Patch(':id')
+  @RequirePermissions('inventory.create')
+  async updateItem(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      purchaseCost?: number | null;
+      status?: InventoryStatus;
+      purchaseReference?: string | null;
+    },
+  ) {
+    return this.inventoryService.updateItem(id, body);
+  }
 }
