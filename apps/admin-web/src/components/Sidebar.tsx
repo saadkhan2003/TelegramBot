@@ -71,23 +71,12 @@ export default function Sidebar() {
         <div className="h-16 flex items-center px-4 border-b border-[#edebe9] bg-[#faf9f8] justify-between group hover:bg-[#f3f2f1] transition">
           <div className="flex items-center gap-3 min-w-0">
             {/* Enterprise Architectural Vector Mark */}
-            <div className="relative h-9 w-9 rounded-[6px] bg-gradient-to-tr from-[#004b87] via-[#0078d4] to-[#2b88d8] p-[1px] shadow-xs flex items-center justify-center shrink-0 border border-[#005a9e]/30">
-              <div className="h-full w-full bg-[#002447] rounded-[5px] flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#0078d4]/30 via-transparent to-[#004e8c]/50" />
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  className="h-5 w-5 text-white relative z-10"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" fill="rgba(255,255,255,0.2)" />
-                  <path d="M2 17l10 5 10-5" />
-                  <path d="M2 12l10 5 10-5" />
-                </svg>
-              </div>
+            <div className="relative h-9 w-9 rounded-[7px] p-[1px] shadow-sm flex items-center justify-center shrink-0 border border-[#0078d4]/30 bg-[#051329] overflow-hidden">
+              <img
+                src="/icons/icon-192.png"
+                alt="Delux Store Logo"
+                className="h-full w-full object-cover rounded-[6px]"
+              />
             </div>
 
             <div className="min-w-0 flex-1">

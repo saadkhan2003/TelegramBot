@@ -108,6 +108,13 @@ export default function Header() {
           <Menu className="h-5 w-5" />
         </button>
 
+        {/* Mobile Brand Emblem */}
+        <div className="lg:hidden flex items-center gap-1.5 shrink-0">
+          <div className="h-7 w-7 rounded-[6px] bg-[#051329] border border-[#0078d4]/30 overflow-hidden shadow-xs p-[1px]">
+            <img src="/icons/icon-192.png" alt="Delux Store" className="h-full w-full object-cover rounded-[5px]" />
+          </div>
+        </div>
+
         {/* Search Input */}
         <div className="relative w-full">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8886]" />

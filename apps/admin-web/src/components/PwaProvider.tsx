@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 export default function PwaProvider({ children }: { children: React.ReactNode }) {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -73,8 +73,12 @@ export default function PwaProvider({ children }: { children: React.ReactNode })
       {showInstallBanner && !isStandalone && (
         <div className="fixed bottom-20 lg:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 bg-white border border-[#0078d4]/30 rounded-[8px] p-4 shadow-xl z-50 animate-in fade-in slide-in-from-bottom-4 duration-300 backdrop-blur-md bg-white/95">
           <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-[6px] bg-[#002447] flex items-center justify-center shrink-0 border border-[#0078d4]/40">
-              <Download className="h-5 w-5 text-[#0078d4]" />
+            <div className="h-11 w-11 rounded-[8px] bg-[#051329] overflow-hidden shrink-0 border border-[#0078d4]/40 shadow-sm p-[1px]">
+              <img
+                src="/icons/icon-192.png"
+                alt="Delux Store App"
+                className="h-full w-full object-cover rounded-[7px]"
+              />
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="text-sm font-semibold text-[#201f1e]">Install Delux Store App</h4>

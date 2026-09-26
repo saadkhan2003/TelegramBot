@@ -1,8 +1,11 @@
 // Delux Store PWA Service Worker - High-Performance Cache & Offline Worker
-const CACHE_NAME = 'delux-store-pwa-v1';
+const CACHE_NAME = 'delux-store-pwa-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
+  '/favicon.ico',
+  '/favicon-32x32.png',
+  '/favicon-16x16.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',
