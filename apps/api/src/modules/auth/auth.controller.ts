@@ -29,4 +29,20 @@ export class AuthController {
     const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
     return this.authService.logout(req.admin.sub, token);
   }
+
+  @Post('forgot-password')
+  async forgotPassword(
+    @Body() body: { email: string },
+    @Req() req: any,
+  ) {
+    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress;
+    return this.authService.requestPasswordReset(body.email, ip);
+  }
+
+  @Post('reset-password')
+  async resetPassword(
+    @Body() body: { email: string; code: string; newPassword: string },
+  ) {
+    return this.authService.resetPassword(body.email, body.code, body.newPassword);
+  }
 }
