@@ -239,12 +239,6 @@ export default function Header() {
             </div>
           )}
         </div>
-
-        {/* Live Operational Status Indicator */}
-        <div className="flex items-center gap-2 border-l border-[#edebe9] pl-4">
-          <span className="inline-block h-2 w-2 rounded-full bg-[#107c10]"></span>
-          <span className="text-xs text-[#605e5c] font-medium">Production Online</span>
-        </div>
       </div>
     </header>
   );

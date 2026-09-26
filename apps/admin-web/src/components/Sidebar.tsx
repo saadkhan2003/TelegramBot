@@ -165,9 +165,8 @@ export default function Sidebar() {
               <span className="truncate max-w-[145px]" title="msaad.official6@gmail.com">
                 msaad.official6@gmail.com
               </span>
-              <span className="text-[#107c10] font-semibold shrink-0 flex items-center gap-1 text-[9px]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#107c10]" />
-                ONLINE
+              <span className="text-[#107c10] font-semibold shrink-0 text-[9px] uppercase tracking-wider">
+                Active
               </span>
             </div>
           </div>
