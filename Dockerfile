@@ -1,12 +1,13 @@
 # ==============================================================================
 # Telegram Digital Store - Unified Multi-Stage Production Dockerfile (Dokploy Ready)
+# Uses Debian Slim (glibc) for 100% prebuilt binary compatibility (Prisma & bcrypt)
 # ==============================================================================
 
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 WORKDIR /app
 
-# Install native dependencies required by Prisma and bcrypt on Alpine
-RUN apk add --no-cache openssl libc6-compat python3 make g++
+# Install OpenSSL for Prisma engine & CA certificates
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Enable and configure pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -41,9 +42,10 @@ RUN pnpm -r run build
 # ------------------------------------------------------------------------------
 # Target: NestJS Backend API (Port 4000)
 # ------------------------------------------------------------------------------
-FROM node:20-alpine AS api
+FROM node:20-slim AS api
 WORKDIR /app
-RUN apk add --no-cache openssl libc6-compat
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && corepack prepare pnpm@latest --activate
 ENV NODE_ENV=production
 ENV PORT=4000
 
@@ -56,9 +58,9 @@ CMD ["node", "dist/main.js"]
 # ------------------------------------------------------------------------------
 # Target: Next.js Admin Web Panel (Port 3000)
 # ------------------------------------------------------------------------------
-FROM node:20-alpine AS admin-web
+FROM node:20-slim AS admin-web
 WORKDIR /app
-RUN apk add --no-cache openssl libc6-compat
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@latest --activate
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -72,9 +74,9 @@ CMD ["pnpm", "start"]
 # ------------------------------------------------------------------------------
 # Target: Telegram Bot Service (Daemon)
 # ------------------------------------------------------------------------------
-FROM node:20-alpine AS bot
+FROM node:20-slim AS bot
 WORKDIR /app
-RUN apk add --no-cache openssl libc6-compat
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 
 COPY --from=base /app /app
@@ -84,9 +86,9 @@ CMD ["node", "dist/index.js"]
 # ------------------------------------------------------------------------------
 # Target: BullMQ Async Background Worker (Daemon)
 # ------------------------------------------------------------------------------
-FROM node:20-alpine AS worker
+FROM node:20-slim AS worker
 WORKDIR /app
-RUN apk add --no-cache openssl libc6-compat
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 
 COPY --from=base /app /app
