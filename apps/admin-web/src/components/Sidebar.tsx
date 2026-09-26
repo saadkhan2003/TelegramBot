@@ -17,6 +17,7 @@ import {
   UserCheck,
   X,
   LogOut,
+  Server,
 } from 'lucide-react';
 import { useNavigation } from '../context/NavigationContext';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +31,7 @@ const navigationGroups = [
       { name: 'Products Catalog', href: '/products', icon: Package },
       { name: 'Inventory & Stock', href: '/inventory', icon: Layers },
       { name: 'Orders Management', href: '/orders', icon: ShoppingBag },
+      { name: 'Stack & Scale Cloud', href: '/stack-and-scale', icon: Server },
     ],
   },
   {
@@ -116,6 +118,36 @@ export default function Sidebar() {
             </div>
           ))}
         </nav>
+
+        {/* Stack & Scale Edge Cluster Operational Status */}
+        <div className="px-3 py-2 border-t border-[#edebe9] bg-[#faf9f8]">
+          <Link
+            href="/stack-and-scale"
+            onClick={closeMobileMenu}
+            className="flex items-center justify-between p-2 rounded-[6px] bg-white border border-[#edebe9] hover:border-[#c7e0f4] hover:bg-[#eff6fc] transition group"
+            title="Stack & Scale Sovereign Cloud"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-5 h-5 shrink-0 flex items-center justify-center">
+                <svg width="18" height="18" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="8" y="72" width="48" height="12" rx="3.5" fill="#1b1a19" fillOpacity="0.25" />
+                  <rect x="26" y="47" width="48" height="13" rx="3.5" fill="#1b1a19" fillOpacity="0.55" />
+                  <rect x="44" y="22" width="48" height="14" rx="3.5" fill="#1b1a19" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold text-[#1b1a19] group-hover:text-[#0078d4] truncate flex items-baseline">
+                  Stack<span className="text-[#8a8886] font-medium mx-[2px] text-[0.85em]">&amp;</span>Scale
+                </div>
+                <div className="text-[9px] text-[#605e5c] truncate">Local-First Edge OS</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#107c10] animate-pulse" />
+              <span className="text-[9px] font-mono font-semibold text-[#107c10]">99.999%</span>
+            </div>
+          </Link>
+        </div>
 
         {/* User / Operator Row: Structured Enterprise Identity Card */}
         <div className="p-3 border-t border-[#edebe9] bg-[#faf9f8]">

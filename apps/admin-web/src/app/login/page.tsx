@@ -168,18 +168,21 @@ export default function LoginPage() {
       <div className="w-full max-w-[440px] flex flex-col items-center z-10 my-auto sm:my-0">
         {/* Main Microsoft Auth Card */}
         <div className="w-full bg-white p-6 sm:p-11 shadow-[0_2px_6px_rgba(0,0,0,0.15)] sm:shadow-[0_2px_6px_rgba(0,0,0,0.2)] border border-[#edebe9] rounded-[4px] sm:rounded-[2px] text-[#1b1a19] transition-all">
-          {/* Microsoft 4-Color Grid & Brand Header */}
+          {/* Stack & Scale Brand Header */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="grid grid-cols-2 gap-[2.5px] w-[22px] h-[22px] shrink-0">
-              <div className="bg-[#f25022] w-full h-full" />
-              <div className="bg-[#7fba00] w-full h-full" />
-              <div className="bg-[#00a4ef] w-full h-full" />
-              <div className="bg-[#ffb900] w-full h-full" />
+            <div className="w-8 h-8 shrink-0 flex items-center justify-center">
+              <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="8" y="72" width="48" height="12" rx="3.5" fill="#1b1a19" fillOpacity="0.22" />
+                <rect x="26" y="47" width="48" height="13" rx="3.5" fill="#1b1a19" fillOpacity="0.50" />
+                <rect x="44" y="22" width="48" height="14" rx="3.5" fill="#1b1a19" />
+              </svg>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[#737373] text-[17px] sm:text-[18px] font-semibold tracking-tight">Delux Store</span>
-              <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-[2px] bg-[#eff6fc] text-[#0078d4] border border-[#c7e0f4]">
-                Entra ID
+              <span className="font-bold text-[18px] sm:text-[19px] tracking-tight text-[#1b1a19]">
+                Stack<span className="text-[#8a8886] font-medium mx-[3px] text-[0.88em]">&amp;</span>Scale
+              </span>
+              <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-[2px] bg-[#f3f2f1] text-[#605e5c] border border-[#edebe9]">
+                Console
               </span>
             </div>
           </div>
@@ -564,20 +567,36 @@ export default function LoginPage() {
         )}
       </div>
 
-      {/* Microsoft Enterprise Global Footer */}
-      <footer className="w-full max-w-[440px] sm:max-w-none sm:fixed sm:bottom-0 sm:left-0 sm:right-0 py-4 px-4 sm:px-6 flex items-center justify-center sm:justify-end gap-5 sm:gap-6 text-[11px] text-[#605e5c] mt-6 sm:mt-0">
-        <a href="#" className="hover:underline hover:text-[#1b1a19] transition">
-          Terms of use
-        </a>
-        <a href="#" className="hover:underline hover:text-[#1b1a19] transition">
-          Privacy & cookies
-        </a>
-        <button
-          className="text-[#605e5c] hover:text-[#1b1a19] font-bold text-sm tracking-widest px-1 py-0.5 rounded hover:bg-[#edebe9] transition"
-          title="More options"
+      {/* Stack & Scale Enterprise Global Footer */}
+      <footer className="w-full max-w-[440px] sm:max-w-none sm:fixed sm:bottom-0 sm:left-0 sm:right-0 py-4 px-4 sm:px-6 flex flex-wrap items-center justify-center sm:justify-end gap-5 sm:gap-6 text-[11px] text-[#605e5c] mt-6 sm:mt-0">
+        <a
+          href="https://stackandscale.org"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:underline hover:text-[#1b1a19] transition flex items-center gap-1.5 font-medium"
         >
-          ...
-        </button>
+          <span className="h-1.5 w-1.5 rounded-full bg-[#107c10]" />
+          Stack &amp; Scale Cloud Services
+        </a>
+        <a
+          href="https://stackandscale.org/#solutions"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:underline hover:text-[#1b1a19] transition"
+        >
+          Edge Operations &amp; POS
+        </a>
+        <a
+          href="https://stackandscale.org/#pricing"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:underline hover:text-[#1b1a19] transition"
+        >
+          Sovereign SLA (99.999%)
+        </a>
+        <a href="#" className="hover:underline hover:text-[#1b1a19] transition">
+          Privacy &amp; Security
+        </a>
       </footer>
     </div>
   );
