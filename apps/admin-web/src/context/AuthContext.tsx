@@ -18,6 +18,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
+  register: (data: { name: string; email: string; password: string; storeName?: string; currency?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   login: async () => {},
   logout: async () => {},
+  register: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -71,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.removeItem('admin_user');
             setUser(null);
             setToken(null);
-            if (pathname !== '/login') {
+            if (pathname !== '/login' && pathname !== '/register') {
               router.replace('/login');
             }
           }
@@ -79,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .catch(() => {
           // If offline / network error / timeout, retain local state if user was parsed, otherwise redirect
           if (!isMounted) return;
-          if (!savedUser && pathname !== '/login') {
+          if (!savedUser && pathname !== '/login' && pathname !== '/register') {
             router.replace('/login');
           }
         })
@@ -90,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setLoading(false);
       clearTimeout(timeoutId);
-      if (pathname !== '/login') {
+      if (pathname !== '/login' && pathname !== '/register') {
         router.replace('/login');
       }
     }
@@ -125,6 +127,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+
+  const register = async (data: { name: string; email: string; password: string; storeName?: string; currency?: string }) => {
+    const base = getApiBase();
+    const res = await fetch(`${base}/admin/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Registration failed. Please try again.');
+    }
+
+    const result = await res.json();
+    if (result.accessToken) {
+      localStorage.setItem('admin_token', result.accessToken);
+      localStorage.setItem('admin_user', JSON.stringify(result.admin));
+      setToken(result.accessToken);
+      setUser(result.admin);
+      router.push('/');
+    }
+  };
+
   const logout = async () => {
     const currentToken = token || (typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null);
     if (currentToken) {
@@ -150,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );

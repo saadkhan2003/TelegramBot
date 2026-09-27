@@ -14,6 +14,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import AboutStackAndScaleModal from '../../components/AboutStackAndScaleModal';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const { login } = useAuth();

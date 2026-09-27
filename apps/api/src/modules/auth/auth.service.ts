@@ -14,6 +14,100 @@ export class AuthService {
     private readonly telegramNotify: TelegramNotifyService,
   ) {}
 
+
+  async register(data: {
+    name: string;
+    email: string;
+    password: string;
+    storeName?: string;
+    currency?: string;
+  }) {
+    const email = data.email?.toLowerCase().trim();
+    if (!email || !data.password || !data.name?.trim()) {
+      throw new BadRequestException('Name, email and password are required.');
+    }
+    if (data.password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters.');
+    }
+
+    // Check if email already taken
+    const existing = await this.prisma.admin.findUnique({ where: { email } });
+    if (existing) {
+      throw new BadRequestException('An account with this email already exists.');
+    }
+
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    // Build store name and slug
+    const storeName = data.storeName?.trim() || `${data.name.trim()}'s Store`;
+    let slug = storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const existingSlug = await this.prisma.store.findUnique({ where: { slug } });
+    if (existingSlug) slug = `${slug}-${Date.now().toString().slice(-5)}`;
+
+    // Create admin + store + StoreMember in one transaction
+    const result = await this.prisma.$transaction(async (tx) => {
+      const admin = await tx.admin.create({
+        data: {
+          email,
+          name: data.name.trim(),
+          passwordHash,
+        },
+      });
+
+      const store = await tx.store.create({
+        data: {
+          name: storeName,
+          slug,
+          currency: data.currency?.toUpperCase() || 'USD',
+          ownerId: admin.id,
+          members: {
+            create: {
+              adminId: admin.id,
+              role: 'OWNER',
+            },
+          },
+        },
+      });
+
+      return { admin, store };
+    });
+
+    // Issue JWT so user is logged in immediately after signup
+    const jwtPayload = {
+      sub: result.admin.id,
+      email: result.admin.email,
+      name: result.admin.name,
+      roles: ['OWNER'],
+      permissions: [],
+    };
+    const token = this.jwtService.sign(jwtPayload);
+
+    await this.prisma.adminSession.create({
+      data: {
+        adminId: result.admin.id,
+        tokenHash: token.slice(-32),
+        ip: 'registration',
+        userAgent: 'web',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    return {
+      accessToken: token,
+      admin: {
+        id: result.admin.id,
+        email: result.admin.email,
+        name: result.admin.name,
+        roles: ['OWNER'],
+        permissions: [],
+      },
+      store: {
+        id: result.store.id,
+        name: result.store.name,
+      },
+    };
+  }
+
   async validateAdmin(email: string, pass: string) {
     const admin = await this.prisma.admin.findUnique({
       where: { email },

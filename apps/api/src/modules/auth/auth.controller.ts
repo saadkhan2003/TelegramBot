@@ -6,7 +6,21 @@ import { AdminAuthGuard } from './auth.guard';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('login')
+  @Post('register')
+  async register(
+    @Body()
+    body: {
+      name: string;
+      email: string;
+      password: string;
+      storeName?: string;
+      currency?: string;
+    },
+  ) {
+    return this.authService.register(body);
+  }
+
+    @Post('login')
   async login(
     @Body() body: { email: string; password: string },
     @Req() req: any,

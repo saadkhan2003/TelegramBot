@@ -15,9 +15,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const { user, loading } = useAuth();
 
-  const isLoginPage = pathname === '/login';
+  const isPublicPage = pathname === '/login' || pathname === '/register';
 
-  if (isLoginPage) {
+  if (isPublicPage) {
     return <>{children}</>;
   }
 
