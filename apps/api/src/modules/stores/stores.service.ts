@@ -11,59 +11,32 @@ export class StoresService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findStoresForAdmin(adminId: string) {
-    const isOwnerOrSuper = await this.prisma.adminRole.findFirst({
+    // STRICT ISOLATION: Every admin only sees stores they own or are a member of.
+    // No system-role bypass — an OWNER of store A cannot see store B unless they
+    // are explicitly added as a member of that store.
+    const stores = await this.prisma.store.findMany({
       where: {
-        adminId,
-        role: { slug: { in: ['OWNER', 'ADMIN'] } },
+        OR: [
+          { ownerId: adminId },
+          { members: { some: { adminId } } },
+        ],
       },
+      include: {
+        owner: {
+          select: { id: true, name: true, email: true },
+        },
+        _count: {
+          select: {
+            products: true,
+            orders: true,
+            categories: true,
+            inventoryItems: true,
+            members: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
     });
-
-    let stores;
-    if (isOwnerOrSuper) {
-      // Super admins / Owners can see all stores
-      stores = await this.prisma.store.findMany({
-        include: {
-          owner: {
-            select: { id: true, name: true, email: true },
-          },
-          _count: {
-            select: {
-              products: true,
-              orders: true,
-              categories: true,
-              inventoryItems: true,
-              members: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-    } else {
-      // Member sees only assigned or owned stores
-      stores = await this.prisma.store.findMany({
-        where: {
-          OR: [
-            { ownerId: adminId },
-            { members: { some: { adminId } } },
-          ],
-        },
-        include: {
-          owner: {
-            select: { id: true, name: true, email: true },
-          },
-          _count: {
-            select: {
-              products: true,
-              orders: true,
-              categories: true,
-              inventoryItems: true,
-              members: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-    }
 
     return stores.map((s) => ({
       id: s.id,
