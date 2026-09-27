@@ -14,6 +14,7 @@ export class InventoryService {
   }
 
   async findAll(params?: {
+    storeId?: string;
     productId?: string;
     status?: InventoryStatus;
     page?: number;
@@ -26,6 +27,10 @@ export class InventoryService {
     const where: any = {};
     if (params?.productId) where.productId = params.productId;
     if (params?.status) where.status = params.status;
+    // Scope inventory by store via product relation
+    if (params?.storeId) {
+      where.product = { storeId: params.storeId };
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.inventoryItem.findMany({

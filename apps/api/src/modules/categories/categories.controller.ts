@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
 import { CategoryStatus } from '@telegram-store/shared';
@@ -10,14 +10,16 @@ export class CategoriesController {
 
   @Get()
   @RequirePermissions('products.view')
-  async findAll(@Query('includeInactive') includeInactive?: string) {
-    return this.categoriesService.findAll(includeInactive === 'true');
+  async findAll(@Req() req: any, @Query('includeInactive') includeInactive?: string) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
+    return this.categoriesService.findAll(includeInactive === 'true', storeId);
   }
 
   @Get(':id')
   @RequirePermissions('products.view')
-  async findOne(@Param('id') id: string) {
-    return this.categoriesService.findOne(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
+    return this.categoriesService.findOne(id, storeId);
   }
 
   @Post()
@@ -32,8 +34,10 @@ export class CategoriesController {
       sortOrder?: number;
       parentId?: string;
     },
+    @Req() req: any,
   ) {
-    return this.categoriesService.create(body);
+    const storeId = req.headers['x-store-id'] as string | undefined;
+    return this.categoriesService.create({ ...body, storeId });
   }
 
   @Patch(':id')
@@ -41,13 +45,16 @@ export class CategoriesController {
   async update(
     @Param('id') id: string,
     @Body() body: any,
+    @Req() req: any,
   ) {
-    return this.categoriesService.update(id, body);
+    const storeId = req.headers['x-store-id'] as string | undefined;
+    return this.categoriesService.update(id, body, storeId);
   }
 
   @Delete(':id')
   @RequirePermissions('products.edit')
-  async remove(@Param('id') id: string) {
-    return this.categoriesService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: any) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
+    return this.categoriesService.remove(id, storeId);
   }
 }

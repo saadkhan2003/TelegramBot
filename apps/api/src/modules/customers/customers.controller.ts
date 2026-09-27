@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query, Req, UseGuards } from '@nestjs/common';
 import { CustomersService } from './customers.service';
 import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
 import { UserStatus } from '@telegram-store/shared';
@@ -11,12 +11,15 @@ export class CustomersController {
   @Get()
   @RequirePermissions('orders.view')
   async findAll(
+    @Req() req: any,
     @Query('search') search?: string,
     @Query('status') status?: UserStatus,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
     return this.customersService.findAll({
+      storeId,
       search,
       status,
       page: page ? parseInt(page, 10) : 1,

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
 import { InventoryStatus } from '@telegram-store/shared';
@@ -11,12 +11,15 @@ export class InventoryController {
   @Get()
   @RequirePermissions('inventory.view')
   async findAll(
+    @Req() req: any,
     @Query('productId') productId?: string,
     @Query('status') status?: InventoryStatus,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
     return this.inventoryService.findAll({
+      storeId,
       productId,
       status,
       page: page ? parseInt(page, 10) : 1,

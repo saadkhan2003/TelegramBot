@@ -6,9 +6,11 @@ import { CategoryStatus } from '@telegram-store/shared';
 export class CategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(includeInactive = false) {
+  async findAll(includeInactive = false, storeId?: string) {
+    const where: any = includeInactive ? {} : { status: CategoryStatus.ACTIVE };
+    if (storeId) where.storeId = storeId;
     return this.prisma.category.findMany({
-      where: includeInactive ? undefined : { status: CategoryStatus.ACTIVE },
+      where,
       orderBy: { sortOrder: 'asc' },
       include: {
         _count: {
@@ -18,7 +20,7 @@ export class CategoriesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, storeId?: string) {
     const category = await this.prisma.category.findUnique({
       where: { id },
       include: {
@@ -26,10 +28,14 @@ export class CategoriesService {
       },
     });
     if (!category) throw new NotFoundException('Category not found');
+    if (storeId && category.storeId && category.storeId !== storeId) {
+      throw new NotFoundException('Category not found');
+    }
     return category;
   }
 
   async create(data: {
+    storeId?: string;
     name: string;
     emoji?: string;
     description?: string;
@@ -39,6 +45,7 @@ export class CategoriesService {
   }) {
     return this.prisma.category.create({
       data: {
+        storeId: data.storeId,
         name: data.name,
         emoji: data.emoji,
         description: data.description,
@@ -56,16 +63,16 @@ export class CategoriesService {
     status: CategoryStatus;
     sortOrder: number;
     parentId: string;
-  }>) {
-    await this.findOne(id);
+  }>, storeId?: string) {
+    await this.findOne(id, storeId);
     return this.prisma.category.update({
       where: { id },
       data,
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, storeId?: string) {
+    await this.findOne(id, storeId);
     return this.prisma.category.update({
       where: { id },
       data: { status: CategoryStatus.DISABLED },

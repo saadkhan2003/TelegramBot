@@ -84,6 +84,7 @@ export class CustomersService {
   }
 
   async findAll(params?: {
+    storeId?: string;
     search?: string;
     status?: UserStatus;
     page?: number;
@@ -95,6 +96,10 @@ export class CustomersService {
 
     const where: any = {};
     if (params?.status) where.status = params.status;
+    // Scope customers to those who have interacted with this store
+    if (params?.storeId) {
+      where.orders = { some: { storeId: params.storeId } };
+    }
     if (params?.search) {
       where.OR = [
         { telegramUsername: { contains: params.search, mode: 'insensitive' } },

@@ -7,6 +7,7 @@ export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(params?: {
+    storeId?: string;
     categoryId?: string;
     status?: ProductStatus;
     search?: string;
@@ -19,6 +20,7 @@ export class ProductsService {
     const skip = (page - 1) * limit;
 
     const where: any = {};
+    if (params?.storeId) where.storeId = params.storeId;
     if (params?.categoryId) where.categoryId = params.categoryId;
     if (params?.status) {
       where.status = params.status;
@@ -74,7 +76,7 @@ export class ProductsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, storeId?: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: {
@@ -90,6 +92,9 @@ export class ProductsService {
     });
 
     if (!product) throw new NotFoundException('Product not found');
+    if (storeId && product.storeId && product.storeId !== storeId) {
+      throw new NotFoundException('Product not found');
+    }
 
     return {
       ...product,
@@ -98,6 +103,7 @@ export class ProductsService {
   }
 
   async create(data: {
+    storeId?: string;
     categoryId: string;
     sku: string;
     name: string;
@@ -128,16 +134,16 @@ export class ProductsService {
     });
   }
 
-  async update(id: string, data: any) {
-    await this.findOne(id);
+  async update(id: string, data: any, storeId?: string) {
+    await this.findOne(id, storeId);
     return this.prisma.product.update({
       where: { id },
       data,
     });
   }
 
-  async archive(id: string) {
-    await this.findOne(id);
+  async archive(id: string, storeId?: string) {
+    await this.findOne(id, storeId);
     return this.prisma.product.update({
       where: { id },
       data: { status: ProductStatus.ARCHIVED },

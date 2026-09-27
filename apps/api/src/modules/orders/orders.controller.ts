@@ -11,12 +11,15 @@ export class OrdersController {
   @Get()
   @RequirePermissions('orders.view')
   async findAll(
+    @Req() req: any,
     @Query('userId') userId?: string,
     @Query('status') status?: OrderStatus,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
     return this.ordersService.findAll({
+      storeId,
       userId,
       status,
       page: page ? parseInt(page, 10) : 1,
@@ -26,8 +29,9 @@ export class OrdersController {
 
   @Get(':id')
   @RequirePermissions('orders.view')
-  async findOne(@Param('id') id: string) {
-    return this.ordersService.findOne(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
+    return this.ordersService.findOne(id, storeId);
   }
 
   @Post(':id/refund')

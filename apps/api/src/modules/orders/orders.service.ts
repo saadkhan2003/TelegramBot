@@ -31,6 +31,7 @@ export class OrdersService {
   }
 
   async findAll(params?: {
+    storeId?: string;
     userId?: string;
     status?: OrderStatus;
     page?: number;
@@ -41,6 +42,7 @@ export class OrdersService {
     const skip = (page - 1) * limit;
 
     const where: any = {};
+    if (params?.storeId) where.storeId = params.storeId;
     if (params?.userId) where.userId = params.userId;
     if (params?.status) where.status = params.status;
 
@@ -75,7 +77,7 @@ export class OrdersService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, storeId?: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
@@ -91,6 +93,9 @@ export class OrdersService {
       },
     });
     if (!order) throw new NotFoundException('Order not found');
+    if (storeId && order.storeId && order.storeId !== storeId) {
+      throw new NotFoundException('Order not found');
+    }
     return order;
   }
 
