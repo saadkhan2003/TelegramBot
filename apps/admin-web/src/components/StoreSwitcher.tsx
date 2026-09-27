@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore, Store } from '../context/StoreContext';
 import {
   Store as StoreIcon,
@@ -13,12 +14,18 @@ import {
   X,
   Sparkles,
 } from 'lucide-react';
+import { SearchableSelect } from './SearchableSelect';
 
 export default function StoreSwitcher() {
   const { stores, activeStore, setActiveStore, createStore, loading } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // New Store Form State
   const [newStoreName, setNewStoreName] = useState('');
@@ -161,52 +168,66 @@ export default function StoreSwitcher() {
         </div>
       )}
 
-      {/* Create New Store Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[6px] p-6 max-w-md w-full space-y-4 shadow-xl animate-in zoom-in-95">
+      {/* Create New Store Modal — Portaled to document.body so it is never trapped inside transformed sidebar */}
+      {showCreateModal && mounted && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="bg-white border border-[#edebe9] rounded-lg p-6 max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150 text-[#1b1a19]"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif',
+            }}
+          >
             <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-[#201f1e]">Create New Store & Bot Tenant</h3>
+                <h3 className="text-base font-bold text-[#1b1a19]">Create New Store &amp; Bot Tenant</h3>
                 <p className="text-xs text-[#605e5c] mt-0.5">
                   Set up a separate store for your friend or new product category.
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c]"
+                className="p-1.5 rounded-sm hover:bg-[#f3f2f1] text-[#737373] hover:text-[#1b1a19] transition-colors cursor-pointer"
+                aria-label="Close dialog"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateSubmit} className="space-y-3.5 text-xs">
+            <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="text-[#201f1e] block mb-1 font-semibold">Store Name</label>
+                <label className="text-[#1b1a19] block mb-1 font-semibold">Store Name</label>
                 <input
                   type="text"
                   required
                   value={newStoreName}
                   onChange={(e) => setNewStoreName(e.target.value)}
                   placeholder="e.g. Ahmed Digital Emporium"
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
+                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#1b1a19] focus:bg-white focus:outline-none focus:border-[#0078d4] transition"
                 />
               </div>
 
               <div>
-                <label className="text-[#201f1e] block mb-1 font-semibold">Base Currency</label>
-                <select
+                <label className="text-[#1b1a19] block mb-1 font-semibold">Base Currency</label>
+                <SearchableSelect
                   value={newStoreCurrency}
-                  onChange={(e) => setNewStoreCurrency(e.target.value)}
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                >
-                  <option value="USD">USD ($) — Global Digital Currencies</option>
-                  <option value="PKR">PKR (Rs) — Pakistan Local Rupee</option>
-                </select>
+                  onChange={setNewStoreCurrency}
+                  options={[
+                    { value: 'USD', label: 'USD ($) — Global Digital Currencies', badge: 'USD' },
+                    { value: 'PKR', label: 'PKR (Rs) — Pakistan Local Rupee', badge: 'PKR' },
+                  ]}
+                  searchable={false}
+                  className="w-full py-2"
+                  menuClassName="w-full"
+                />
               </div>
 
               <div>
-                <label className="text-[#201f1e] block mb-1 font-semibold flex items-center justify-between">
+                <label className="text-[#1b1a19] block mb-1 font-semibold flex items-center justify-between">
                   <span>Telegram Bot Token</span>
                   <span className="text-[10px] text-[#605e5c] font-normal">Optional (can add later)</span>
                 </label>
@@ -215,7 +236,7 @@ export default function StoreSwitcher() {
                   value={newStoreBotToken}
                   onChange={(e) => setNewStoreBotToken(e.target.value)}
                   placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4] font-mono"
+                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#1b1a19] focus:bg-white focus:outline-none focus:border-[#0078d4] font-mono transition"
                 />
                 <p className="text-[10px] text-[#605e5c] mt-1">
                   Obtain your Bot Token from @BotFather on Telegram.
@@ -226,14 +247,14 @@ export default function StoreSwitcher() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-3 py-1.5 rounded-[4px] border border-[#d2d0ce] hover:bg-[#f3f2f1] text-[#605e5c] font-medium transition"
+                  className="px-3 py-1.5 rounded-[4px] border border-[#d2d0ce] hover:bg-[#f3f2f1] text-[#605e5c] font-medium transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="px-4 py-1.5 rounded-[4px] bg-[#0078d4] hover:bg-[#106ebe] text-white font-semibold shadow-xs transition flex items-center gap-1.5"
+                  className="px-4 py-1.5 rounded-[4px] bg-[#0078d4] hover:bg-[#106ebe] text-white font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   <span>Create Store</span>
@@ -241,7 +262,8 @@ export default function StoreSwitcher() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

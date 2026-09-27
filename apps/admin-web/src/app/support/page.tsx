@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   LifeBuoy,
   ShieldAlert,
@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
 import CategoryBadge from '../../components/CategoryBadge';
+import { SearchableSelect } from '../../components/SearchableSelect';
+import { Modal } from '../../components/Modal';
 
 export default function SupportPage() {
   const [tab, setTab] = useState<'tickets' | 'warranty'>('tickets');
@@ -146,6 +148,25 @@ export default function SupportPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const supportStatusOptions = useMemo(() => {
+    if (tab === 'tickets') {
+      return [
+        { value: '', label: 'All Statuses' },
+        { value: 'OPEN', label: 'OPEN (Active)', badge: 'Open', badgeColor: 'bg-[#fff4ce] text-[#8a3707] border-[#fed9cc]' },
+        { value: 'WAITING_USER', label: 'WAITING_USER (Customer Action)', badge: 'Waiting', badgeColor: 'bg-[#eff6fc] text-[#0078d4] border-[#c7e0f4]' },
+        { value: 'RESOLVED', label: 'RESOLVED', badge: 'Resolved', badgeColor: 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]' },
+        { value: 'CLOSED', label: 'CLOSED', badge: 'Closed', badgeColor: 'bg-[#f3f2f1] text-[#605e5c] border-[#edebe9]' },
+      ];
+    } else {
+      return [
+        { value: '', label: 'All Statuses' },
+        { value: 'OPEN', label: 'OPEN (Needs Review)', badge: 'Review', badgeColor: 'bg-[#fff4ce] text-[#8a3707] border-[#fed9cc]' },
+        { value: 'APPROVED', label: 'APPROVED (Replacement Issued)', badge: 'Approved', badgeColor: 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]' },
+        { value: 'REJECTED', label: 'REJECTED', badge: 'Rejected', badgeColor: 'bg-[#fde7e9] text-[#a4262c] border-[#f8d2d4]' },
+      ];
+    }
+  }, [tab]);
+
   return (
     <div className="space-y-6 max-w-7xl pb-12">
       {/* Header */}
@@ -190,7 +211,7 @@ export default function SupportPage() {
 
       {/* Filter Bar */}
       <div className="flex flex-col md:flex-row gap-3 bg-white p-3 rounded-[4px] border border-[#edebe9] shadow-sm">
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-0">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8886]" />
           <input
             type="text"
@@ -201,27 +222,13 @@ export default function SupportPage() {
           />
         </div>
 
-        <select
+        <SearchableSelect
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] px-3 py-1.5 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-        >
-          <option value="">All Statuses</option>
-          {tab === 'tickets' ? (
-            <>
-              <option value="OPEN">OPEN</option>
-              <option value="WAITING_USER">WAITING_USER</option>
-              <option value="RESOLVED">RESOLVED</option>
-              <option value="CLOSED">CLOSED</option>
-            </>
-          ) : (
-            <>
-              <option value="OPEN">OPEN (Needs Review)</option>
-              <option value="APPROVED">APPROVED (Replacement Issued)</option>
-              <option value="REJECTED">REJECTED</option>
-            </>
-          )}
-        </select>
+          onChange={setStatusFilter}
+          options={supportStatusOptions}
+          searchable={false}
+          className="w-full sm:w-56 shrink-0"
+        />
       </div>
 
       {/* Main Table */}
@@ -368,96 +375,94 @@ export default function SupportPage() {
       )}
 
       {/* Ticket Conversation History & Reply Modal */}
-      {replyModal.open && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[4px] p-6 max-w-lg w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
-            <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-[#201f1e]">Reply to Ticket #{replyModal.ticketNumber}</h3>
-                <p className="text-xs text-[#605e5c] mt-0.5">
-                  Replying to <span className="font-semibold text-[#0078d4]">{replyModal.customer}</span> (Delivered directly via Telegram Bot)
-                </p>
-              </div>
-              <button
-                onClick={() => setReplyModal({ open: false })}
-                className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c]"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      <Modal isOpen={replyModal.open} onClose={() => setReplyModal({ open: false })}>
+        <div className="bg-white border border-[#edebe9] rounded-[4px] p-6 max-w-lg w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+          <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-[#201f1e]">Reply to Ticket #{replyModal.ticketNumber}</h3>
+              <p className="text-xs text-[#605e5c] mt-0.5">
+                Replying to <span className="font-semibold text-[#0078d4]">{replyModal.customer}</span> (Delivered directly via Telegram Bot)
+              </p>
             </div>
+            <button
+              onClick={() => setReplyModal({ open: false })}
+              className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c]"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
 
-            {/* Conversation Thread History */}
-            <div className="space-y-2 max-h-56 overflow-y-auto p-3 bg-[#faf9f8] rounded-[4px] border border-[#edebe9] divide-y divide-[#edebe9]">
-              {replyModal.messages && replyModal.messages.length > 0 ? (
-                replyModal.messages.map((m: any, idx: number) => {
-                  const isStaff = m.senderType === 'STAFF';
-                  return (
-                    <div key={idx} className={`pt-2 first:pt-0 ${isStaff ? 'text-right' : 'text-left'}`}>
-                      <div className="flex items-center gap-1.5 text-[10px] text-[#605e5c] mb-0.5 justify-start">
-                        {isStaff ? (
-                          <span className="font-bold text-[#0078d4]">Staff / Admin</span>
-                        ) : (
-                          <span className="font-bold text-[#201f1e]">{replyModal.customer}</span>
-                        )}
-                        <span>•</span>
-                        <span>{m.createdAt ? m.createdAt.slice(11, 16) : ''}</span>
-                      </div>
-                      <div
-                        className={`inline-block p-2 rounded-[4px] text-xs max-w-xs ${
-                          isStaff
-                            ? 'bg-[#0078d4] text-white text-left'
-                            : 'bg-white border border-[#edebe9] text-[#201f1e]'
-                        }`}
-                      >
-                        {m.messageText}
-                      </div>
+          {/* Conversation Thread History */}
+          <div className="space-y-2 max-h-56 overflow-y-auto p-3 bg-[#faf9f8] rounded-[4px] border border-[#edebe9] divide-y divide-[#edebe9]">
+            {replyModal.messages && replyModal.messages.length > 0 ? (
+              replyModal.messages.map((m: any, idx: number) => {
+                const isStaff = m.senderType === 'STAFF';
+                return (
+                  <div key={idx} className={`pt-2 first:pt-0 ${isStaff ? 'text-right' : 'text-left'}`}>
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#605e5c] mb-0.5 justify-start">
+                      {isStaff ? (
+                        <span className="font-bold text-[#0078d4]">Staff / Admin</span>
+                      ) : (
+                        <span className="font-bold text-[#201f1e]">{replyModal.customer}</span>
+                      )}
+                      <span>•</span>
+                      <span>{m.createdAt ? m.createdAt.slice(11, 16) : ''}</span>
                     </div>
-                  );
-                })
+                    <div
+                      className={`inline-block p-2 rounded-[4px] text-xs max-w-xs ${
+                        isStaff
+                          ? 'bg-[#0078d4] text-white text-left'
+                          : 'bg-white border border-[#edebe9] text-[#201f1e]'
+                      }`}
+                    >
+                      {m.messageText}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-xs text-[#605e5c] text-center py-2">No previous messages in this ticket.</p>
+            )}
+          </div>
+
+          {/* Reply Input */}
+          <div className="space-y-2 text-xs">
+            <label className="text-[#201f1e] block font-semibold">Your Reply</label>
+            <textarea
+              rows={3}
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Type your response. This message will be sent instantly to the user in their Telegram chat."
+              className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2.5 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4]"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#edebe9]">
+            <button
+              onClick={() => setReplyModal({ open: false })}
+              className="px-3.5 py-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#201f1e] text-xs font-medium transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleReply}
+              disabled={isSendingReply || !replyText.trim()}
+              className="px-4 py-1.5 rounded-[4px] bg-[#0078d4] hover:bg-[#106ebe] disabled:bg-[#c7e0f4] text-white font-medium text-xs shadow-xs transition flex items-center gap-1.5"
+            >
+              {isSendingReply ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <p className="text-xs text-[#605e5c] text-center py-2">No previous messages in this ticket.</p>
+                <Send className="h-3.5 w-3.5" />
               )}
-            </div>
-
-            {/* Reply Input */}
-            <div className="space-y-2 text-xs">
-              <label className="text-[#201f1e] block font-semibold">Your Reply</label>
-              <textarea
-                rows={3}
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Type your response. This message will be sent instantly to the user in their Telegram chat."
-                className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2.5 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4]"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#edebe9]">
-              <button
-                onClick={() => setReplyModal({ open: false })}
-                className="px-3.5 py-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#201f1e] text-xs font-medium transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReply}
-                disabled={isSendingReply || !replyText.trim()}
-                className="px-4 py-1.5 rounded-[4px] bg-[#0078d4] hover:bg-[#106ebe] disabled:bg-[#c7e0f4] text-white font-medium text-xs shadow-xs transition flex items-center gap-1.5"
-              >
-                {isSendingReply ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Send className="h-3.5 w-3.5" />
-                )}
-                <span>{isSendingReply ? 'Sending to Telegram...' : 'Send Message'}</span>
-              </button>
-            </div>
+              <span>{isSendingReply ? 'Sending to Telegram...' : 'Send Message'}</span>
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Warranty Replacement Confirmation Modal */}
-      {approveClaimId && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+      <Modal isOpen={!!approveClaimId} onClose={() => setApproveClaimId(null)}>
+        {approveClaimId && (
           <div className="bg-white border border-[#edebe9] rounded-[4px] p-6 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
             <div className="border-b border-[#edebe9] pb-3">
               <h3 className="text-sm font-bold text-[#201f1e]">Approve Warranty Replacement?</h3>
@@ -486,8 +491,8 @@ export default function SupportPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* Floating Toast Notification */}
       {toast && (

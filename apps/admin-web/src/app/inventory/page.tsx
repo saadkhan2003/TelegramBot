@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Layers,
   Upload,
@@ -18,6 +18,9 @@ import {
   Trash2,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
+import { Pagination } from '../../components/Pagination';
+import { SearchableSelect } from '../../components/SearchableSelect';
+import { Modal } from '../../components/Modal';
 
 export default function InventoryPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -25,6 +28,10 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [revealedCreds, setRevealedCreds] = useState<Record<string, any>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Filters
   const [selectedProductFilter, setSelectedProductFilter] = useState('');
@@ -181,6 +188,11 @@ export default function InventoryPage() {
     return prodName.includes(query) || unitId.includes(query);
   });
 
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   // Selection helpers
   const allFilteredSelected = filteredItems.length > 0 && filteredItems.every((i) => selectedIds.has(i.id));
   const someFilteredSelected = filteredItems.some((i) => selectedIds.has(i.id));
@@ -217,6 +229,36 @@ export default function InventoryPage() {
       setBulkDeleting(false);
     }
   };
+  const productFilterOptions = useMemo(() => {
+    return [
+      { value: '', label: `All Products (${products.length})` },
+      ...products.map((p) => ({
+        value: p.id,
+        label: p.name,
+        sublabel: p.sku ? `SKU: ${p.sku}` : undefined,
+        badge: p.category?.name,
+      })),
+    ];
+  }, [products]);
+
+  const modalProductOptions = useMemo(() => {
+    return products.map((p) => ({
+      value: p.id,
+      label: p.name,
+      sublabel: `SKU: ${p.sku || 'N/A'} • In Stock: ${p.availableStock ?? 0}`,
+      badge: `$${Number(p.normalPrice || 0).toFixed(2)}`,
+      badgeColor: 'bg-[#eff6fc] text-[#0078d4] border-[#c7e0f4]',
+    }));
+  }, [products]);
+
+  const statusFilterOptions = [
+    { value: '', label: 'All Inventory Statuses' },
+    { value: 'AVAILABLE', label: 'AVAILABLE (Ready for Delivery)', badge: 'Ready', badgeColor: 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]' },
+    { value: 'SOLD', label: 'SOLD (Delivered to Buyer)', badge: 'Sold', badgeColor: 'bg-[#f3f2f1] text-[#605e5c] border-[#edebe9]' },
+    { value: 'RESERVED', label: 'RESERVED (Checkout In-Flight)', badge: 'Reserved', badgeColor: 'bg-[#fff4ce] text-[#8a3707] border-[#fed9cc]' },
+    { value: 'DEFECTIVE', label: 'DEFECTIVE (Flagged)', badge: 'Defective', badgeColor: 'bg-[#fde7e9] text-[#a4262c] border-[#f8d2d4]' },
+    { value: 'RETIRED', label: 'RETIRED (Archived)', badge: 'Retired', badgeColor: 'bg-[#f3f2f1] text-[#605e5c] border-[#edebe9]' },
+  ];
 
   return (
     <div className="space-y-6 max-w-7xl pb-12">
@@ -255,31 +297,22 @@ export default function InventoryPage() {
           />
         </div>
 
-        <select
+        <SearchableSelect
           value={selectedProductFilter}
-          onChange={(e) => setSelectedProductFilter(e.target.value)}
-          className="bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] px-3 py-1.5 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-        >
-          <option value="">All Products ({products.length})</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+          onChange={setSelectedProductFilter}
+          options={productFilterOptions}
+          searchPlaceholder="Search product by name or SKU..."
+          className="w-full"
+          searchable={true}
+        />
 
-        <select
+        <SearchableSelect
           value={selectedStatusFilter}
-          onChange={(e) => setSelectedStatusFilter(e.target.value)}
-          className="bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] px-3 py-1.5 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-        >
-          <option value="">All Inventory Statuses</option>
-          <option value="AVAILABLE">AVAILABLE (Ready for Delivery)</option>
-          <option value="SOLD">SOLD (Delivered to Buyer)</option>
-          <option value="RESERVED">RESERVED (Checkout In-Flight)</option>
-          <option value="DEFECTIVE">DEFECTIVE</option>
-          <option value="RETIRED">RETIRED</option>
-        </select>
+          onChange={setSelectedStatusFilter}
+          options={statusFilterOptions}
+          searchable={false}
+          className="w-full"
+        />
       </div>
 
       {/* Bulk Action Bar */}
@@ -332,8 +365,8 @@ export default function InventoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
-            {filteredItems.length > 0 ? (
-              filteredItems.map((item) => {
+            {paginatedItems.length > 0 ? (
+              paginatedItems.map((item) => {
                 const cred = revealedCreds[item.id];
                 const credString = cred ? (typeof cred === 'object' ? JSON.stringify(cred) : String(cred)) : '';
 
@@ -439,13 +472,22 @@ export default function InventoryPage() {
             )}
           </tbody>
         </table>
+
+        {/* Pagination Bar */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredItems.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="inventory units"
+        />
       </div>
 
       {/* Bulk Import Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[4px] p-6 max-w-xl w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
-            <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
+      <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)}>
+        <div className="bg-white border border-[#edebe9] rounded-[6px] p-6 max-w-xl w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+          <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-[#201f1e]">Bulk Stock Importer</h3>
                 <p className="text-xs text-[#605e5c] mt-0.5">
@@ -463,18 +505,17 @@ export default function InventoryPage() {
             <div className="space-y-3.5 text-xs">
               <div>
                 <label className="text-[#201f1e] block mb-1 font-semibold">Target Product</label>
-                <select
+                <SearchableSelect
                   value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.target.value)}
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                >
-                  <option value="">Select Product...</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.sku})
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedProductId}
+                  options={modalProductOptions}
+                  placeholder="Search and select product..."
+                  searchPlaceholder="Type product name or SKU..."
+                  className="w-full py-2"
+                  menuClassName="w-full"
+                  searchable={true}
+                  required
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -586,13 +627,12 @@ export default function InventoryPage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Edit Wholesale Cost Modal */}
-      {editingItem && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[4px] p-5 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+      <Modal isOpen={Boolean(editingItem)} onClose={() => setEditingItem(null)}>
+        {editingItem && (
+          <div className="bg-white border border-[#edebe9] rounded-[6px] p-5 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
             <div className="border-b border-[#edebe9] pb-2.5 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-[#201f1e]">Update Wholesale Rate</h3>
@@ -661,54 +701,52 @@ export default function InventoryPage() {
                 {updatingCost && <Loader2 className="h-3 w-3 animate-spin" />}
                 <span>Save Wholesale Rate</span>
               </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </Modal>
 
       {/* Bulk Delete Confirmation Modal */}
-      {showBulkDeleteConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[4px] p-5 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
-            <div className="border-b border-[#edebe9] pb-2.5 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-[#a4262c]">Confirm Bulk Delete</h3>
-                <p className="text-[11px] text-[#605e5c] mt-0.5">
-                  This will permanently remove {selectedIds.size} inventory item{selectedIds.size > 1 ? 's' : ''}.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowBulkDeleteConfirm(false)}
-                className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c]"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      <Modal isOpen={showBulkDeleteConfirm} onClose={() => setShowBulkDeleteConfirm(false)}>
+        <div className="bg-white border border-[#edebe9] rounded-[6px] p-5 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+          <div className="border-b border-[#edebe9] pb-2.5 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-[#a4262c]">Confirm Bulk Delete</h3>
+              <p className="text-[11px] text-[#605e5c] mt-0.5">
+                This will permanently remove {selectedIds.size} inventory item{selectedIds.size > 1 ? 's' : ''}.
+              </p>
             </div>
-            <div className="p-3 rounded-[4px] bg-[#fde7e9] border border-[#f8d2d4] text-xs text-[#a4262c]">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <p>This action cannot be undone. All encrypted credential payloads will be permanently destroyed.</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#edebe9]">
-              <button
-                onClick={() => setShowBulkDeleteConfirm(false)}
-                className="px-3 py-1.5 rounded-[4px] border border-[#d2d0ce] hover:bg-[#f3f2f1] text-[#605e5c] text-xs font-medium transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBulkDelete}
-                disabled={bulkDeleting}
-                className="px-3.5 py-1.5 rounded-[4px] bg-[#a4262c] hover:bg-[#8b2025] text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5"
-              >
-                {bulkDeleting && <Loader2 className="h-3 w-3 animate-spin" />}
-                <span>{bulkDeleting ? 'Deleting...' : `Delete ${selectedIds.size} Item${selectedIds.size > 1 ? 's' : ''}`}</span>
-              </button>
+            <button
+              onClick={() => setShowBulkDeleteConfirm(false)}
+              className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c] cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-3 rounded-[4px] bg-[#fde7e9] border border-[#f8d2d4] text-xs text-[#a4262c]">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <p>This action cannot be undone. All encrypted credential payloads will be permanently destroyed.</p>
             </div>
           </div>
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#edebe9]">
+            <button
+              onClick={() => setShowBulkDeleteConfirm(false)}
+              className="px-3 py-1.5 rounded-[4px] border border-[#d2d0ce] hover:bg-[#f3f2f1] text-[#605e5c] text-xs font-medium transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="px-3.5 py-1.5 rounded-[4px] bg-[#a4262c] hover:bg-[#8b2025] text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              {bulkDeleting && <Loader2 className="h-3 w-3 animate-spin" />}
+              <span>{bulkDeleting ? 'Deleting...' : `Delete ${selectedIds.size} Item${selectedIds.size > 1 ? 's' : ''}`}</span>
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
 
       {/* Floating Toast Notification */}
       {toast && (

@@ -32,6 +32,8 @@ import {
 import { fetchApi } from '../../lib/api';
 import TeamManagement from '../../components/TeamManagement';
 import StoreFleetSettings from '../../components/StoreFleetSettings';
+import { SearchableSelect } from '../../components/SearchableSelect';
+import { Modal } from '../../components/Modal';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<
@@ -1015,12 +1017,17 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="md:col-span-3">
-                          <label className="text-[#201f1e] block mb-1 font-semibold">
-                            Deposit Instructions Displayed to Customer in Telegram
-                          </label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[#201f1e] font-semibold text-xs">
+                              Deposit Instructions Displayed to Customer in Telegram
+                            </label>
+                            <span className="text-[11px] text-[#605e5c]">
+                              Visible to users inside Telegram upon choosing this method
+                            </span>
+                          </div>
                           <textarea
-                            rows={2}
-                            placeholder="1. Send money to account above. 2. Reply to bot with 11-digit TID."
+                            rows={4}
+                            placeholder={`1. Send money to account above.\n2. Reply to bot with 11-digit TID.`}
                             value={edit.instructions}
                             onChange={(e) =>
                               setNetworkEdits({
@@ -1028,7 +1035,7 @@ export default function SettingsPage() {
                                 [net.id]: { ...edit, instructions: e.target.value },
                               })
                             }
-                            className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] text-xs focus:bg-white focus:outline-none focus:border-[#0078d4]"
+                            className="w-full min-h-[92px] bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2.5 text-[#201f1e] text-xs leading-relaxed focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4] resize-y"
                           />
                         </div>
                       </div>
@@ -1202,9 +1209,8 @@ export default function SettingsPage() {
           </div>
 
           {/* Modal: Add Custom Payment Method */}
-          {newMethodModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-              <div className="bg-white rounded-[4px] border border-[#edebe9] max-w-md w-full p-6 shadow-xl space-y-4">
+          <Modal isOpen={newMethodModal} onClose={() => setNewMethodModal(false)}>
+            <div className="bg-white rounded-[4px] border border-[#edebe9] max-w-md w-full p-6 shadow-xl space-y-4">
                 <div className="flex items-center justify-between border-b border-[#edebe9] pb-3">
                   <h3 className="font-bold text-sm text-[#201f1e] flex items-center gap-2">
                     <Plus className="h-4 w-4 text-[#0078d4]" />
@@ -1268,11 +1274,11 @@ export default function SettingsPage() {
                   <div>
                     <label className="text-[#201f1e] block mb-1 font-semibold">Customer Instructions</label>
                     <textarea
-                      rows={2}
-                      placeholder="1. Send money to account above. 2. Reply with TID."
+                      rows={4}
+                      placeholder={`1. Send money to account above.\n2. Reply to bot with TID or screenshot.`}
                       value={newMethodForm.instructions}
                       onChange={(e) => setNewMethodForm({ ...newMethodForm, instructions: e.target.value })}
-                      className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
+                      className="w-full min-h-[85px] bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2.5 text-[#201f1e] text-xs leading-relaxed focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4] resize-y"
                     />
                   </div>
                 </div>
@@ -1294,8 +1300,7 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </div>
-            </div>
-          )}
+          </Modal>
         </div>
       )}
 
@@ -1319,14 +1324,17 @@ export default function SettingsPage() {
                 <div className="space-y-4 text-xs">
                   <div>
                     <label className="text-[#201f1e] block mb-1 font-semibold">Default Fulfillment Speed</label>
-                    <select
+                    <SearchableSelect
                       value={formValues['default_fulfillment'] || 'MANUAL'}
-                      onChange={(e) => setFormValues({ ...formValues, default_fulfillment: e.target.value })}
-                      className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                    >
-                      <option value="MANUAL">MANUAL (Wholesaler On-Demand / Hold in Processing)</option>
-                      <option value="INSTANT">INSTANT (Deliver pre-uploaded inventory keys immediately)</option>
-                    </select>
+                      onChange={(val) => setFormValues({ ...formValues, default_fulfillment: val })}
+                      options={[
+                        { value: 'MANUAL', label: 'MANUAL (Wholesaler On-Demand / Hold in Processing)', badge: 'Manual' },
+                        { value: 'INSTANT', label: 'INSTANT (Deliver pre-uploaded inventory keys immediately)', badge: 'Instant', badgeColor: 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]' },
+                      ]}
+                      searchable={false}
+                      className="w-full py-2"
+                      menuClassName="w-full"
+                    />
                   </div>
 
                   <div>
@@ -1638,21 +1646,24 @@ export default function SettingsPage() {
                       </span>
                     )}
                   </div>
-                  <select
+                  <SearchableSelect
                     value={formValues['default_language'] || 'en'}
-                    onChange={(e) => {
-                      const val = e.target.value;
+                    onChange={(val) => {
                       setFormValues({ ...formValues, default_language: val });
                       handleSaveSetting('default_language', val);
                     }}
-                    className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                  >
-                    <option value="en">English (Default)</option>
-                    <option value="ur">Urdu (اردو)</option>
-                    <option value="zh">Chinese (中文)</option>
-                    <option value="ru">Russian (Русский)</option>
-                    <option value="vi">Vietnamese (Tiếng Việt)</option>
-                  </select>
+                    options={[
+                      { value: 'en', label: 'English (Default)', badge: 'EN' },
+                      { value: 'ur', label: 'Urdu (اردو)', badge: 'UR' },
+                      { value: 'zh', label: 'Chinese (中文)', badge: 'ZH' },
+                      { value: 'ru', label: 'Russian (Русский)', badge: 'RU' },
+                      { value: 'vi', label: 'Vietnamese (Tiếng Việt)', badge: 'VI' },
+                    ]}
+                    searchable={true}
+                    searchPlaceholder="Search language..."
+                    className="w-full py-2"
+                    menuClassName="w-full"
+                  />
                 </div>
 
                 <div className="p-4 rounded-[4px] bg-[#faf9f8] border border-[#edebe9] space-y-3">

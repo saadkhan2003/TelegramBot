@@ -21,6 +21,7 @@ import {
   Check,
   X,
 } from 'lucide-react';
+import { SearchableSelect } from './SearchableSelect';
 
 export default function StoreFleetSettings() {
   const { stores, activeStore, refreshStores, setActiveStore } = useStore();
@@ -182,14 +183,17 @@ export default function StoreFleetSettings() {
 
               <div>
                 <label className="text-[#201f1e] block mb-1 font-semibold">Base Currency</label>
-                <select
+                <SearchableSelect
                   value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                >
-                  <option value="USD">USD ($) — Global Standard</option>
-                  <option value="PKR">PKR (Rs) — Pakistan Rupee</option>
-                </select>
+                  onChange={setCurrency}
+                  options={[
+                    { value: 'USD', label: 'USD ($) — Global Standard', badge: 'USD' },
+                    { value: 'PKR', label: 'PKR (Rs) — Pakistan Rupee', badge: 'PKR' },
+                  ]}
+                  searchable={false}
+                  className="w-full py-2"
+                  menuClassName="w-full"
+                />
               </div>
             </div>
 

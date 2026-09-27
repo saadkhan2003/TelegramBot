@@ -23,6 +23,8 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { fetchApi } from '../lib/api';
+import { SearchableSelect } from './SearchableSelect';
+import { Modal } from './Modal';
 import { useAuth } from '../context/AuthContext';
 
 export default function TeamManagement() {
@@ -316,9 +318,8 @@ export default function TeamManagement() {
       </div>
 
       {/* Add Team Member Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[6px] p-6 max-w-md w-full space-y-4 shadow-xl animate-in zoom-in-95">
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
+        <div className="bg-white border border-[#edebe9] rounded-[6px] p-6 max-w-md w-full space-y-4 shadow-xl animate-in zoom-in-95">
             <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-[#201f1e]">Add New Team Member</h3>
@@ -390,15 +391,18 @@ export default function TeamManagement() {
 
               <div>
                 <label className="text-[#201f1e] block mb-1 font-semibold">Assign Role & Permissions</label>
-                <select
+                <SearchableSelect
                   value={newRoleSlug}
-                  onChange={(e) => setNewRoleSlug(e.target.value)}
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                >
-                  <option value="ADMIN">Administrator — Full control of products, orders, inventory, and settings</option>
-                  <option value="MANAGER">Store Manager — Manage catalog, inventory, and order fulfillment</option>
-                  <option value="SUPPORT_AGENT">Support Agent — View tickets, warranty claims, and orders</option>
-                </select>
+                  onChange={setNewRoleSlug}
+                  options={[
+                    { value: 'ADMIN', label: 'Administrator', sublabel: 'Full control of products, orders, inventory, settings', badge: 'Admin' },
+                    { value: 'MANAGER', label: 'Store Manager', sublabel: 'Manage catalog, inventory, and fulfillment', badge: 'Manager' },
+                    { value: 'SUPPORT_AGENT', label: 'Support Agent', sublabel: 'View tickets, warranty claims, and orders', badge: 'Support' },
+                  ]}
+                  searchable={false}
+                  className="w-full py-2"
+                  menuClassName="w-full"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#edebe9]">
@@ -420,12 +424,11 @@ export default function TeamManagement() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Edit Team Member Modal */}
-      {editingMember && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+      <Modal isOpen={!!editingMember} onClose={() => setEditingMember(null)}>
+        {editingMember && (
           <div className="bg-white border border-[#edebe9] rounded-[6px] p-6 max-w-md w-full space-y-4 shadow-xl animate-in zoom-in-95">
             <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
               <div>
@@ -445,28 +448,34 @@ export default function TeamManagement() {
             <form onSubmit={handleUpdateMember} className="space-y-3.5 text-xs">
               <div>
                 <label className="text-[#201f1e] block mb-1 font-semibold">Role</label>
-                <select
+                <SearchableSelect
                   value={editRoleSlug}
-                  onChange={(e) => setEditRoleSlug(e.target.value)}
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                >
-                  <option value="OWNER">Owner (Highest access)</option>
-                  <option value="ADMIN">Administrator (Full operational control)</option>
-                  <option value="MANAGER">Store Manager (Catalog & Fulfillment)</option>
-                  <option value="SUPPORT_AGENT">Support Agent (Tickets & Orders)</option>
-                </select>
+                  onChange={setEditRoleSlug}
+                  options={[
+                    { value: 'OWNER', label: 'Owner', sublabel: 'Highest access & system root', badge: 'Owner' },
+                    { value: 'ADMIN', label: 'Administrator', sublabel: 'Full operational control', badge: 'Admin' },
+                    { value: 'MANAGER', label: 'Store Manager', sublabel: 'Catalog & Fulfillment', badge: 'Manager' },
+                    { value: 'SUPPORT_AGENT', label: 'Support Agent', sublabel: 'Tickets & Orders', badge: 'Support' },
+                  ]}
+                  searchable={false}
+                  className="w-full py-2"
+                  menuClassName="w-full"
+                />
               </div>
 
               <div>
                 <label className="text-[#201f1e] block mb-1 font-semibold">Account Status</label>
-                <select
+                <SearchableSelect
                   value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as any)}
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                >
-                  <option value="ACTIVE">ACTIVE (Authorized to log in)</option>
-                  <option value="SUSPENDED">SUSPENDED (Access revoked)</option>
-                </select>
+                  onChange={(val) => setEditStatus(val as any)}
+                  options={[
+                    { value: 'ACTIVE', label: 'ACTIVE (Authorized to log in)', badge: 'Active', badgeColor: 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]' },
+                    { value: 'SUSPENDED', label: 'SUSPENDED (Access revoked)', badge: 'Suspended', badgeColor: 'bg-[#fde7e9] text-[#a4262c] border-[#f8d2d4]' },
+                  ]}
+                  searchable={false}
+                  className="w-full py-2"
+                  menuClassName="w-full"
+                />
               </div>
 
               <div>
@@ -504,8 +513,8 @@ export default function TeamManagement() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* Floating Toast Notification */}
       {toast && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   ArrowDownCircle,
   Check,
@@ -15,12 +15,19 @@ import {
   Trash2,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
+import { Pagination } from '../../components/Pagination';
+import { SearchableSelect } from '../../components/SearchableSelect';
+import { Modal } from '../../components/Modal';
 
 export default function DepositsPage() {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -132,11 +139,27 @@ export default function DepositsPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const paginatedDeposits = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   // Selection helpers
   const allFilteredSelected = filtered.length > 0 && filtered.every((d) => selectedIds.has(d.id));
   const someFilteredSelected = filtered.some((d) => selectedIds.has(d.id));
   const toggleSelectAll = () => { if (allFilteredSelected) setSelectedIds(new Set()); else setSelectedIds(new Set(filtered.map((d) => d.id))); };
   const toggleSelect = (id: string) => { setSelectedIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
+
+  const statusFilterOptions = useMemo(
+    () => [
+      { value: '', label: `All Statuses (${deposits.length})` },
+      { value: 'MANUAL_REVIEW', label: '⚠️ MANUAL_REVIEW (Needs Approval)', badge: 'Review', badgeColor: 'bg-[#fff4ce] text-[#8a3707] border-[#fed9cc]' },
+      { value: 'CREDITED', label: 'CREDITED (Approved)', badge: 'Approved', badgeColor: 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]' },
+      { value: 'EXPIRED', label: 'EXPIRED', badge: 'Expired', badgeColor: 'bg-[#f3f2f1] text-[#605e5c] border-[#edebe9]' },
+      { value: 'FAILED', label: 'FAILED', badge: 'Failed', badgeColor: 'bg-[#fde7e9] text-[#a4262c] border-[#f8d2d4]' },
+    ],
+    [deposits.length]
+  );
 
   return (
     <div className="space-y-6 max-w-7xl pb-12">
@@ -150,7 +173,7 @@ export default function DepositsPage() {
 
       {/* Filter Bar */}
       <div className="flex flex-col md:flex-row gap-3 bg-white p-3 rounded-[4px] border border-[#edebe9] shadow-sm">
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-0">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8886]" />
           <input
             type="text"
@@ -161,17 +184,13 @@ export default function DepositsPage() {
           />
         </div>
 
-        <select
+        <SearchableSelect
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] px-3 py-1.5 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-        >
-          <option value="">All Statuses ({deposits.length})</option>
-          <option value="MANUAL_REVIEW">⚠️ MANUAL_REVIEW (Needs Approval)</option>
-          <option value="CREDITED">CREDITED (Approved)</option>
-          <option value="EXPIRED">EXPIRED</option>
-          <option value="FAILED">FAILED</option>
-        </select>
+          onChange={setStatusFilter}
+          options={statusFilterOptions}
+          searchable={false}
+          className="w-full sm:w-64 shrink-0"
+        />
       </div>
 
       {/* Bulk Action Bar */}
@@ -205,8 +224,8 @@ export default function DepositsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
-            {filtered.length > 0 ? (
-              filtered.map((d) => (
+            {paginatedDeposits.length > 0 ? (
+              paginatedDeposits.map((d) => (
                 <tr key={d.id} className={`hover:bg-[#faf9f8] transition ${selectedIds.has(d.id) ? 'bg-[#eff6fc]' : ''}`}>
                   <td className="px-3 py-4">
                     <input type="checkbox" checked={selectedIds.has(d.id)} onChange={() => toggleSelect(d.id)} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
@@ -343,12 +362,21 @@ export default function DepositsPage() {
             )}
           </tbody>
         </table>
+
+        {/* Pagination Bar */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="deposits"
+        />
       </div>
 
       {/* Approve Deposit Modal */}
-      {approveModal.open && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[4px] p-6 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+      <Modal isOpen={approveModal.open} onClose={() => setApproveModal({ open: false })}>
+        <div className="bg-white border border-[#edebe9] rounded-[4px] p-6 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
             <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-[#201f1e]">Approve Deposit #{approveModal.depositNumber}</h3>
@@ -473,8 +501,7 @@ export default function DepositsPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Floating Toast Notification */}
       {toast && (

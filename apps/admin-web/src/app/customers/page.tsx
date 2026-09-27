@@ -17,6 +17,10 @@ import {
   Trash2,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
+import { Avatar } from '../../components/Avatar';
+import { Pagination } from '../../components/Pagination';
+import { SearchableSelect } from '../../components/SearchableSelect';
+import { Modal } from '../../components/Modal';
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -24,6 +28,10 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -106,6 +114,11 @@ export default function CustomersPage() {
     return matchSearch && matchStatus;
   });
 
+  const paginatedCustomers = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   // Selection helpers
   const allFilteredSelected = filtered.length > 0 && filtered.every((c) => selectedIds.has(c.id));
   const someFilteredSelected = filtered.some((c) => selectedIds.has(c.id));
@@ -133,7 +146,7 @@ export default function CustomersPage() {
 
       {/* Filter */}
       <div className="bg-white p-3 rounded-[4px] border border-[#edebe9] shadow-sm flex flex-col md:flex-row items-stretch md:items-center gap-3">
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-0">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8886]" />
           <input
             type="text"
@@ -143,15 +156,17 @@ export default function CustomersPage() {
             className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] pl-9 pr-3 py-1.5 text-xs text-[#201f1e] placeholder-[#a19f9d] focus:bg-white focus:outline-none focus:border-[#0078d4]"
           />
         </div>
-        <select
+        <SearchableSelect
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] px-3 py-1.5 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-        >
-          <option value="">All Statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="FROZEN">Frozen</option>
-        </select>
+          onChange={setStatusFilter}
+          options={[
+            { value: '', label: 'All Statuses' },
+            { value: 'ACTIVE', label: 'Active', badge: 'Active', badgeColor: 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]' },
+            { value: 'FROZEN', label: 'Frozen', badge: 'Frozen', badgeColor: 'bg-[#fde7e9] text-[#a4262c] border-[#f8d2d4]' },
+          ]}
+          searchable={false}
+          className="w-full sm:w-48 shrink-0"
+        />
       </div>
 
       {/* Bulk Action Bar */}
@@ -185,17 +200,30 @@ export default function CustomersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
-            {filtered.length > 0 ? (
-              filtered.map((c) => (
+            {paginatedCustomers.length > 0 ? (
+              paginatedCustomers.map((c) => (
                 <tr key={c.id} className={`hover:bg-[#faf9f8] transition ${selectedIds.has(c.id) ? 'bg-[#eff6fc]' : ''}`}>
                   <td className="px-3 py-4">
                     <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
                   </td>
                   <td className="px-6 py-4 font-semibold text-[#201f1e]">
-                    {c.firstName} {c.lastName}{' '}
-                    {c.telegramUsername && (
-                      <span className="text-[#0078d4] font-medium">(@{c.telegramUsername})</span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        seed={c.telegramUsername || c.telegramUserId || `${c.firstName || ''}_${c.lastName || ''}`}
+                        name={`${c.firstName || ''} ${c.lastName || ''}`}
+                        size="sm"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-[#201f1e] leading-snug">
+                          {c.firstName} {c.lastName}
+                        </div>
+                        {c.telegramUsername && (
+                          <div className="text-[11px] font-normal text-[#0078d4]">
+                            @{c.telegramUsername}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4 font-mono text-[11px] text-[#0078d4]">{c.telegramUserId}</td>
                   <td className="px-6 py-4 font-bold text-[#107c10]">
@@ -264,11 +292,21 @@ export default function CustomersPage() {
             )}
           </tbody>
         </table>
+
+        {/* Pagination Controls */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="customers"
+        />
       </div>
 
       {/* Quick Balance Adjustment Modal */}
-      {adjustTarget && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+      <Modal isOpen={!!adjustTarget} onClose={() => setAdjustTarget(null)}>
+        {adjustTarget && (
           <div className="bg-white border border-[#edebe9] rounded-[4px] p-6 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
             <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
               <div>
@@ -357,8 +395,8 @@ export default function CustomersPage() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* Floating Toast Notification */}
       {toast && (

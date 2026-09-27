@@ -13,6 +13,7 @@ import {
   Loader2,
   ShieldAlert,
 } from 'lucide-react';
+import AboutStackAndScaleModal from '../../components/AboutStackAndScaleModal';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -20,11 +21,12 @@ export default function LoginPage() {
   // Navigation steps: 'email' | 'password' | 'forgot_email' | 'forgot_code' | 'forgot_success'
   const [step, setStep] = useState<'email' | 'password' | 'forgot_email' | 'forgot_code' | 'forgot_success'>('email');
 
-  const [email, setEmail] = useState('msaad.official6@gmail.com');
-  const [password, setPassword] = useState('Saad_@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAboutModal, setShowAboutModal] = useState(false);
 
   // Password Recovery state
   const [recoveryCode, setRecoveryCode] = useState('');
@@ -550,6 +552,25 @@ export default function LoginPage() {
               </div>
             </div>
           )}
+
+          {/* Stack & Scale Footer Inside Card */}
+          <div className="pt-4 mt-6 border-t border-[#edebe9] flex items-center justify-between text-xs text-[#605e5c]">
+            <div className="flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="8" y="72" width="48" height="12" rx="3.5" fill="#1b1a19" fillOpacity="0.25" />
+                <rect x="26" y="47" width="48" height="13" rx="3.5" fill="#1b1a19" fillOpacity="0.55" />
+                <rect x="44" y="22" width="48" height="14" rx="3.5" fill="#1b1a19" />
+              </svg>
+              <span>Engineered by <strong className="font-semibold text-[#1b1a19]">Stack &amp; Scale</strong></span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAboutModal(true)}
+              className="text-[#605e5c] hover:text-[#1b1a19] hover:underline cursor-pointer"
+            >
+              About software
+            </button>
+          </div>
         </div>
 
         {/* Microsoft Sign-In Options Pill (Below Card) */}
@@ -564,37 +585,47 @@ export default function LoginPage() {
         )}
       </div>
 
-      {/* Stack & Scale Enterprise Global Footer */}
-      <footer className="w-full max-w-[440px] sm:max-w-none sm:fixed sm:bottom-0 sm:left-0 sm:right-0 py-4 px-4 sm:px-6 flex flex-wrap items-center justify-center sm:justify-end gap-5 sm:gap-6 text-[11px] text-[#605e5c] mt-6 sm:mt-0">
-        <a
-          href="https://stackandscale.org"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:underline hover:text-[#1b1a19] transition flex items-center gap-1.5 font-medium"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-[#107c10]" />
-          Stack &amp; Scale Cloud Services
-        </a>
-        <a
-          href="https://stackandscale.org/#solutions"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:underline hover:text-[#1b1a19] transition"
-        >
-          Edge Operations &amp; POS
-        </a>
-        <a
-          href="https://stackandscale.org/#pricing"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:underline hover:text-[#1b1a19] transition"
-        >
-          Sovereign SLA (99.999%)
-        </a>
-        <a href="#" className="hover:underline hover:text-[#1b1a19] transition">
-          Privacy &amp; Security
-        </a>
+      {/* Global Bottom Footer Matching Reference */}
+      <footer className="w-full sm:fixed sm:bottom-0 sm:left-0 sm:right-0 py-3.5 px-4 sm:px-6 flex flex-wrap items-center justify-between gap-4 text-xs text-[#605e5c] mt-6 sm:mt-0 select-none">
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="72" width="48" height="12" rx="3.5" fill="#1b1a19" fillOpacity="0.25" />
+              <rect x="26" y="47" width="48" height="13" rx="3.5" fill="#1b1a19" fillOpacity="0.55" />
+              <rect x="44" y="22" width="48" height="14" rx="3.5" fill="#1b1a19" />
+            </svg>
+            <span>Made by <strong className="font-semibold text-[#1b1a19]">Stack &amp; Scale</strong></span>
+          </div>
+          <span>·</span>
+          <button
+            type="button"
+            onClick={() => setShowAboutModal(true)}
+            className="hover:underline hover:text-[#1b1a19] cursor-pointer"
+          >
+            About Stack &amp; Scale
+          </button>
+        </div>
+
+        <div className="flex items-center gap-5 text-[11px]">
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setStep('forgot_email');
+            }}
+            className="hover:underline hover:text-[#1b1a19] cursor-pointer"
+          >
+            Can’t access your account?
+          </button>
+          <span>© 2026 Delux Store</span>
+        </div>
       </footer>
+
+      {/* About Stack & Scale Modal */}
+      <AboutStackAndScaleModal
+        isOpen={showAboutModal}
+        onClose={() => setShowAboutModal(false)}
+      />
     </div>
   );
 }

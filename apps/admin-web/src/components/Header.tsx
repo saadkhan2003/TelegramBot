@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Bell,
   Search,
@@ -20,22 +20,58 @@ import {
   Users,
   Bot,
   Shield,
-  UserCheck,
+  Plus,
+  Package,
+  Layers,
+  ExternalLink,
+  Command,
+  Wallet,
 } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 import { useNavigation } from '../context/NavigationContext';
 import { useAuth } from '../context/AuthContext';
+import { Avatar } from './Avatar';
+import { CommandPalette } from './CommandPalette';
+
+const routeDetails: Record<string, { section: string; title: string }> = {
+  '/': { section: 'Overview', title: 'Dashboard' },
+  '/products': { section: 'Operations', title: 'Products Catalog' },
+  '/inventory': { section: 'Operations', title: 'Inventory & Stock' },
+  '/orders': { section: 'Operations', title: 'Orders Management' },
+  '/deposits': { section: 'Treasury', title: 'Deposits & Payments' },
+  '/wallets': { section: 'Treasury', title: 'Wallets & Ledger' },
+  '/customers': { section: 'Directory', title: 'Customer Accounts' },
+  '/support': { section: 'Helpdesk', title: 'Support & Claims' },
+  '/settings': { section: 'System', title: 'Store Settings' },
+  '/stack-and-scale': { section: 'Engineering', title: 'Stack & Scale' },
+};
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const { toggleMobileMenu } = useNavigation();
   const { user, logout } = useAuth();
+
+  // Dropdown & Modal states
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Notification states
   const [notifications, setNotifications] = useState<any[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  // Refs for outside click handling
   const dropdownRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const quickActionRef = useRef<HTMLDivElement>(null);
+
+  // Get current breadcrumb info
+  const currentRoute = routeDetails[pathname] || {
+    section: 'Store',
+    title: pathname.replace('/', '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || 'Dashboard',
+  };
 
   const loadNotifications = () => {
     fetchApi('/admin/notifications')
@@ -49,39 +85,39 @@ export default function Header() {
 
   useEffect(() => {
     loadNotifications();
-    // Poll every 15 seconds for incoming customer orders, deposits, and tickets
     const timer = setInterval(loadNotifications, 15000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Keyboard shortcut listener for ⌘K / Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setIsOpen(false);
       }
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+      if (profileRef.current && !profileRef.current.contains(target)) {
         setIsProfileOpen(false);
+      }
+      if (quickActionRef.current && !quickActionRef.current.contains(target)) {
+        setIsQuickActionOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const getInitials = (name?: string, email?: string) => {
-    if (name) {
-      const cleaned = name.replace(/[^\w\s]/g, '').trim();
-      const parts = cleaned.split(/\s+/).filter(Boolean);
-      if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-      if (parts.length === 1 && parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase();
-      if (parts.length === 1) return parts[0][0].toUpperCase();
-    }
-    if (email) {
-      const username = email.split('@')[0].replace(/[^\w\s]/g, '');
-      return username.slice(0, 2).toUpperCase();
-    }
-    return 'MS';
-  };
 
   const activeNotifications = notifications.filter((n) => !dismissedIds.has(n.id));
   const unreadCount = activeNotifications.length;
@@ -91,11 +127,13 @@ export default function Header() {
     setDismissedIds(allIds);
   };
 
-  const handleItemClick = (link: string, id: string) => {
+  const handleNotificationClick = (link: string, id: string) => {
     setDismissedIds((prev) => new Set([...Array.from(prev), id]));
     setIsOpen(false);
     router.push(link);
   };
+
+
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -125,12 +163,13 @@ export default function Header() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-[#edebe9] flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-30 shadow-2xs">
-      <div className="flex items-center gap-3 flex-1 max-w-lg">
+    <header className="h-14 bg-white/95 backdrop-blur-md border-b border-[#e2e8f0] flex items-center justify-between px-3 sm:px-6 sticky top-0 z-30 shadow-2xs select-none">
+      {/* 1. Left Section: Breadcrumb & Context Navigation */}
+      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
         {/* Mobile Hamburger Drawer Toggle */}
         <button
           onClick={toggleMobileMenu}
-          className="lg:hidden p-2 rounded-[6px] text-[#605e5c] hover:text-[#201f1e] hover:bg-[#f3f2f1] transition -ml-1 shrink-0 cursor-pointer"
+          className="lg:hidden p-1.5 rounded-[5px] text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition -ml-1 shrink-0 cursor-pointer"
           aria-label="Open navigation menu"
         >
           <Menu className="h-5 w-5" />
@@ -138,26 +177,105 @@ export default function Header() {
 
         {/* Mobile Brand Emblem */}
         <div className="lg:hidden flex items-center gap-1.5 shrink-0">
-          <div className="h-7 w-7 rounded-[6px] bg-[#051329] border border-[#0078d4]/30 overflow-hidden shadow-xs p-[1px]">
-            <img src="/icons/icon-192.png" alt="Delux Store" className="h-full w-full object-cover rounded-[5px]" />
+          <div className="h-6 w-6 rounded-[5px] bg-[#051329] border border-[#0078d4]/30 overflow-hidden shadow-xs p-[1px]">
+            <img src="/icons/icon-192.png" alt="Delux Store" className="h-full w-full object-cover rounded-[4px]" />
           </div>
         </div>
 
-        {/* Restructured Clean Search Input */}
-        <div className="relative w-full max-w-md">
-          <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
-          <input
-            type="text"
-            placeholder="Search orders, customers, TxIDs..."
-            className="w-full bg-[#f8fafc] border border-[#e2e8f0] rounded-[6px] pl-9 pr-12 py-1.5 text-xs text-[#1e293b] placeholder-[#94a3b8] focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4] transition shadow-2xs"
-          />
-          <span className="hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-[#94a3b8] bg-white border border-[#e2e8f0] px-1.5 py-0.5 rounded-[4px] shadow-2xs">
-            ⌘K
-          </span>
+        {/* Desktop Breadcrumb Hierarchy */}
+        <div className="hidden sm:flex items-center gap-2 text-xs">
+          <Link
+            href="/"
+            className="font-semibold text-[#0f172a] hover:text-[#0078d4] transition flex items-center gap-1.5"
+          >
+            <span>Delux Store</span>
+          </Link>
+          <span className="text-[#cbd5e1] font-normal">/</span>
+          <span className="font-semibold text-[#1e293b]">{currentRoute.title}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2">
+      {/* 2. Center Section: Executive Command Search Bar */}
+      <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-2 sm:mx-4">
+        <button
+          type="button"
+          onClick={() => setIsCommandPaletteOpen(true)}
+          className="w-full bg-[#f8fafc] hover:bg-white border border-[#e2e8f0] hover:border-[#cbd5e1] rounded-[6px] pl-3.5 pr-2.5 py-1.5 text-xs text-[#64748b] hover:text-[#0f172a] flex items-center justify-between transition shadow-2xs group cursor-pointer text-left"
+          title="Open Omnisearch & Command Palette (Ctrl+K)"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Search className="h-3.5 w-3.5 text-[#94a3b8] group-hover:text-[#0078d4] transition shrink-0" />
+            <span className="truncate text-xs font-normal">Search orders, customers, inventory, commands...</span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0 ml-2">
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono text-[#94a3b8] bg-white border border-[#e2e8f0] group-hover:border-[#cbd5e1] px-1.5 py-0.5 rounded shadow-2xs transition">
+              ⌘K
+            </kbd>
+          </div>
+        </button>
+      </div>
+
+      {/* 3. Right Section: Quick Action, Bot Status, Notifications & Profile */}
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Quick Action Button */}
+        <div className="relative" ref={quickActionRef}>
+          <button
+            onClick={() => setIsQuickActionOpen(!isQuickActionOpen)}
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-[5px] bg-[#eff6fc] hover:bg-[#dbeafe] text-[#0078d4] border border-[#c7e0f4] text-xs font-semibold shadow-2xs transition cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Create</span>
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </button>
+
+          {isQuickActionOpen && (
+            <div className="absolute right-0 mt-2 w-52 bg-white rounded-[6px] shadow-fluentModal border border-[#edebe9] z-50 p-1.5 space-y-0.5 animate-in fade-in duration-100 divide-y divide-[#edebe9]">
+              <div className="space-y-0.5">
+                <Link
+                  href="/products"
+                  onClick={() => setIsQuickActionOpen(false)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-[#201f1e] hover:bg-[#f3f2f1] transition font-medium"
+                >
+                  <Package className="h-3.5 w-3.5 text-[#0078d4]" />
+                  <span>New Product SKU</span>
+                </Link>
+                <Link
+                  href="/inventory"
+                  onClick={() => setIsQuickActionOpen(false)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-[#201f1e] hover:bg-[#f3f2f1] transition font-medium"
+                >
+                  <Layers className="h-3.5 w-3.5 text-[#107c10]" />
+                  <span>Import Stock Batch</span>
+                </Link>
+                <Link
+                  href="/deposits"
+                  onClick={() => setIsQuickActionOpen(false)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-[#201f1e] hover:bg-[#f3f2f1] transition font-medium"
+                >
+                  <ArrowDownCircle className="h-3.5 w-3.5 text-[#8a3707]" />
+                  <span>Review Deposits</span>
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Telegram Bot Live Fleet Status */}
+        <a
+          href="https://t.me/thedeluxstorebot"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden xl:flex items-center gap-2 px-2.5 py-1 rounded-[5px] bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs transition shadow-2xs"
+          title="Direct link to customer Telegram Bot"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="font-mono text-[11px] text-[#0f172a] font-medium">@thedeluxstorebot</span>
+          <ExternalLink className="h-3 w-3 text-[#94a3b8]" />
+        </a>
+
         {/* Notification Bell Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
@@ -165,9 +283,9 @@ export default function Header() {
             className={`relative p-2 rounded-[6px] transition-all border cursor-pointer ${
               isOpen
                 ? 'bg-[#eff6fc] border-[#c7e0f4] text-[#0078d4]'
-                : 'border-transparent text-[#605e5c] hover:text-[#201f1e] hover:bg-[#f3f2f1]'
+                : 'border-transparent text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9]'
             }`}
-            title="Notifications"
+            title="System Notifications"
           >
             <Bell className="h-4 w-4" />
             {unreadCount > 0 && (
@@ -175,10 +293,8 @@ export default function Header() {
             )}
           </button>
 
-          {/* Microsoft Fluent Light Dropdown Popover */}
           {isOpen && (
             <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white border border-[#edebe9] rounded-[6px] shadow-fluentModal z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
-              {/* Header */}
               <div className="px-4 py-3 border-b border-[#edebe9] bg-[#faf9f8] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-xs font-bold text-[#201f1e]">Notifications</h3>
@@ -198,13 +314,12 @@ export default function Header() {
                 )}
               </div>
 
-              {/* Notification List */}
-              <div className="max-h-[380px] overflow-y-auto divide-y divide-[#edebe9]">
+              <div className="max-h-[380px] overflow-y-auto divide-y divide-[#edebe9] thin-scrollbar">
                 {activeNotifications.length > 0 ? (
                   activeNotifications.map((n) => (
                     <div
                       key={n.id}
-                      onClick={() => handleItemClick(n.link, n.id)}
+                      onClick={() => handleNotificationClick(n.link, n.id)}
                       className="p-3.5 hover:bg-[#faf9f8] transition cursor-pointer flex items-start gap-3 group"
                     >
                       <div className="p-2 rounded-[4px] bg-[#f3f2f1] border border-[#edebe9] shrink-0 mt-0.5 group-hover:border-[#c7e0f4] group-hover:bg-[#eff6fc] transition">
@@ -238,7 +353,6 @@ export default function Header() {
                 )}
               </div>
 
-              {/* Footer */}
               <div className="px-4 py-2 border-t border-[#edebe9] bg-[#faf9f8] flex items-center justify-between text-[11px]">
                 <button
                   onClick={() => {
@@ -260,35 +374,37 @@ export default function Header() {
           )}
         </div>
 
-        {/* Clean Divider */}
+        {/* Clean Hairline Vertical Divider */}
         <div className="h-5 w-[1px] bg-[#e2e8f0]" />
 
-        {/* Executive User Profile Dropdown */}
+        {/* Executive User Profile Pill Dropdown */}
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className={`flex items-center gap-2.5 px-2 py-1 rounded-[6px] transition-all border cursor-pointer ${
+            className={`flex items-center gap-2 pl-1 pr-2 py-1 rounded-[6px] transition-all border cursor-pointer ${
               isProfileOpen
                 ? 'bg-[#eff6fc] border-[#c7e0f4] shadow-2xs'
-                : 'border-transparent hover:bg-[#faf9f8] hover:border-[#edebe9]'
+                : 'border-transparent hover:bg-[#f8fafc] hover:border-[#e2e8f0]'
             }`}
           >
-            {/* Sleek Executive Dark Avatar */}
-            <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#0f172a] via-[#1e293b] to-[#334155] text-white flex items-center justify-center font-bold text-[11px] shadow-2xs tracking-wider ring-1 ring-slate-900/10 shrink-0">
-              {getInitials(user?.name, user?.email)}
-            </div>
+            {/* Notionist Face Avatar with Online Beacon */}
+            <Avatar name={user?.name} email={user?.email} size="sm" showOnline={true} />
 
-            {/* User Name with Chevron beside it - NO OWNER text below */}
-            <div className="hidden sm:flex items-center gap-1.5 text-left">
-              <span className="text-xs font-semibold text-[#1e293b] tracking-tight">
+            {/* User Identity Label */}
+            <div className="hidden sm:flex flex-col text-left leading-none">
+              <span className="text-xs font-semibold text-[#0f172a] tracking-tight">
                 {user?.name || user?.email?.split('@')[0] || 'Admin'}
               </span>
-              <ChevronDown
-                className={`h-3.5 w-3.5 text-[#8a8886] transition-transform duration-200 ${
-                  isProfileOpen ? 'rotate-180 text-[#0f172a]' : ''
-                }`}
-              />
+              <span className="text-[10px] font-medium text-[#64748b] mt-0.5">
+                Store Owner
+              </span>
             </div>
+
+            <ChevronDown
+              className={`h-3.5 w-3.5 text-[#94a3b8] transition-transform duration-200 ${
+                isProfileOpen ? 'rotate-180 text-[#0f172a]' : ''
+              }`}
+            />
           </button>
 
           {isProfileOpen && (
@@ -296,9 +412,7 @@ export default function Header() {
               {/* Profile Card Header */}
               <div className="p-3.5 bg-gradient-to-b from-[#faf9f8] to-white">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[#0f172a] via-[#1e293b] to-[#334155] text-white flex items-center justify-center font-bold text-sm shadow-sm tracking-wider shrink-0 ring-2 ring-[#e2e8f0]">
-                    {getInitials(user?.name, user?.email)}
-                  </div>
+                  <Avatar name={user?.name} email={user?.email} size="lg" showOnline={true} />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-[#201f1e] truncate">
                       {user?.name || user?.email?.split('@')[0] || 'Administrator'}
@@ -308,7 +422,7 @@ export default function Header() {
                     </p>
                     <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#107c10] mt-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#107c10]" />
-                      Active Session
+                      Active Console Session
                     </span>
                   </div>
                 </div>
@@ -324,7 +438,7 @@ export default function Header() {
                   <Settings className="h-4 w-4 text-[#0078d4]" />
                   <div className="flex-1">
                     <span className="font-semibold">Store Configuration</span>
-                    <span className="block text-[10px] text-[#8a8886] font-normal">Branding, wallets & rules</span>
+                    <span className="block text-[10px] text-[#8a8886] font-normal">Branding, wallets &amp; rules</span>
                   </div>
                 </Link>
 
@@ -335,8 +449,8 @@ export default function Header() {
                 >
                   <Users className="h-4 w-4 text-[#107c10]" />
                   <div className="flex-1">
-                    <span className="font-semibold">Team Members & Staff</span>
-                    <span className="block text-[10px] text-[#8a8886] font-normal">Manage friend accounts</span>
+                    <span className="font-semibold">Team Members &amp; Staff</span>
+                    <span className="block text-[10px] text-[#8a8886] font-normal">Manage operator permissions</span>
                   </div>
                 </Link>
 
@@ -347,8 +461,8 @@ export default function Header() {
                 >
                   <Bot className="h-4 w-4 text-[#8a3707]" />
                   <div className="flex-1">
-                    <span className="font-semibold">Store & Bot Fleet</span>
-                    <span className="block text-[10px] text-[#8a8886] font-normal">Tokens & bot runners</span>
+                    <span className="font-semibold">Store &amp; Bot Fleet</span>
+                    <span className="block text-[10px] text-[#8a8886] font-normal">Tokens &amp; bot runners</span>
                   </div>
                 </Link>
 
@@ -359,7 +473,7 @@ export default function Header() {
                 >
                   <Shield className="h-4 w-4 text-[#605e5c]" />
                   <div className="flex-1">
-                    <span className="font-semibold">Security & Audit Logs</span>
+                    <span className="font-semibold">Security &amp; Audit Logs</span>
                     <span className="block text-[10px] text-[#8a8886] font-normal">View admin session trails</span>
                   </div>
                 </Link>
@@ -372,7 +486,7 @@ export default function Header() {
                     setIsProfileOpen(false);
                     logout();
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[4px] text-xs font-semibold text-[#d13438] hover:bg-[#fde7e9] transition text-left"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[4px] text-xs font-semibold text-[#d13438] hover:bg-[#fde7e9] transition text-left cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                   <div className="flex-1">
@@ -385,6 +499,12 @@ export default function Header() {
           )}
         </div>
       </div>
+
+      {/* Global Enterprise Omnisearch & Command Palette */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+      />
     </header>
   );
 }

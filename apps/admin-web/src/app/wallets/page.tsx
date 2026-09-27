@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Wallet,
   Plus,
@@ -15,6 +15,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
+import { SearchableSelect } from '../../components/SearchableSelect';
+import { Modal } from '../../components/Modal';
 
 export default function WalletsPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -66,6 +68,10 @@ export default function WalletsPage() {
 
   const handleAdjust = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!adjustForm.userId) {
+      showToast('Please select a customer', 'error');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await fetchApi('/admin/wallets/adjust', {
@@ -85,6 +91,24 @@ export default function WalletsPage() {
       setIsSubmitting(false);
     }
   };
+  const customerOptions = useMemo(() => {
+    return customers.map((c) => ({
+      value: c.id,
+      label: `${c.firstName || 'Customer'} (@${c.telegramUsername || c.telegramUserId})`,
+      sublabel: `ID: ${c.telegramUserId} • Spent: $${Number(c.wallet?.totalSpent ?? 0).toFixed(2)}`,
+      badge: `$${Number(c.wallet?.cachedBalance ?? 0).toFixed(2)}`,
+      badgeColor: 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]',
+    }));
+  }, [customers]);
+
+  const directionOptions = useMemo(
+    () => [
+      { value: '', label: `All Directions (${transactions.length})` },
+      { value: 'CREDIT', label: 'Credit (+ Inflow to User)' },
+      { value: 'DEBIT', label: 'Debit (- Outflow from User)' },
+    ],
+    [transactions.length]
+  );
 
   const filtered = transactions.filter((tx) => {
     const q = search.toLowerCase();
@@ -130,7 +154,7 @@ export default function WalletsPage() {
 
       {/* Filter Bar */}
       <div className="flex flex-col md:flex-row gap-3 bg-white p-3 rounded-[4px] border border-[#edebe9] shadow-sm">
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-0">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8886]" />
           <input
             type="text"
@@ -141,15 +165,13 @@ export default function WalletsPage() {
           />
         </div>
 
-        <select
+        <SearchableSelect
           value={directionFilter}
-          onChange={(e) => setDirectionFilter(e.target.value)}
-          className="bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] px-3 py-1.5 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-        >
-          <option value="">All Directions ({transactions.length})</option>
-          <option value="CREDIT">Credit (+ Inflow to User)</option>
-          <option value="DEBIT">Debit (- Outflow from User)</option>
-        </select>
+          onChange={setDirectionFilter}
+          options={directionOptions}
+          searchable={false}
+          className="w-full sm:w-56 shrink-0"
+        />
       </div>
 
       {/* Bulk Action Bar */}
@@ -237,116 +259,113 @@ export default function WalletsPage() {
       </div>
 
       {/* Manual Adjustment Modal */}
-      {showAdjustModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[4px] p-6 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
-            <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-[#201f1e]">Manual Ledger Adjustment</h3>
-                <p className="text-xs text-[#605e5c] mt-0.5">Debit or credit a customer wallet balance</p>
-              </div>
-              <button
-                onClick={() => setShowAdjustModal(false)}
-                className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c]"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      <Modal isOpen={showAdjustModal} onClose={() => setShowAdjustModal(false)}>
+        <div className="bg-white border border-[#edebe9] rounded-[6px] p-6 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+          <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-[#201f1e]">Manual Ledger Adjustment</h3>
+              <p className="text-xs text-[#605e5c] mt-0.5">Debit or credit a customer wallet balance</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAdjustModal(false)}
+              className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c] cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <form onSubmit={handleAdjust} className="space-y-3.5 text-xs">
+            <div>
+              <label className="text-[#201f1e] block mb-1 font-semibold">Customer</label>
+              <SearchableSelect
+                value={adjustForm.userId}
+                onChange={(val) => setAdjustForm({ ...adjustForm, userId: val })}
+                options={customerOptions}
+                placeholder="Select or search customer..."
+                searchPlaceholder="Search customer by name, @username, or ID..."
+                className="w-full py-2"
+                menuClassName="w-full"
+                searchable={true}
+                required
+              />
             </div>
 
-            <form onSubmit={handleAdjust} className="space-y-3.5 text-xs">
-              <div>
-                <label className="text-[#201f1e] block mb-1 font-semibold">Customer</label>
-                <select
-                  required
-                  value={adjustForm.userId}
-                  onChange={(e) => setAdjustForm({ ...adjustForm, userId: e.target.value })}
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                >
-                  <option value="">Select customer...</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.firstName} (@{c.telegramUsername || c.telegramUserId})
-                    </option>
-                  ))}
-                </select>
+            <div>
+              <label className="text-[#201f1e] block mb-1 font-semibold">Direction</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-1.5 text-[#201f1e] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="direction"
+                    checked={adjustForm.direction === 'CREDIT'}
+                    onChange={() => setAdjustForm({ ...adjustForm, direction: 'CREDIT' })}
+                  />
+                  <span className="font-medium text-[#107c10]">Credit (+ Balance)</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-[#201f1e] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="direction"
+                    checked={adjustForm.direction === 'DEBIT'}
+                    onChange={() => setAdjustForm({ ...adjustForm, direction: 'DEBIT' })}
+                  />
+                  <span className="font-medium text-[#d13438]">Debit (- Balance)</span>
+                </label>
               </div>
+            </div>
 
-              <div>
-                <label className="text-[#201f1e] block mb-1 font-semibold">Direction</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-1.5 text-[#201f1e] cursor-pointer">
-                    <input
-                      type="radio"
-                      name="direction"
-                      checked={adjustForm.direction === 'CREDIT'}
-                      onChange={() => setAdjustForm({ ...adjustForm, direction: 'CREDIT' })}
-                    />
-                    <span className="font-medium text-[#107c10]">Credit (+ Balance)</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 text-[#201f1e] cursor-pointer">
-                    <input
-                      type="radio"
-                      name="direction"
-                      checked={adjustForm.direction === 'DEBIT'}
-                      onChange={() => setAdjustForm({ ...adjustForm, direction: 'DEBIT' })}
-                    />
-                    <span className="font-medium text-[#d13438]">Debit (- Balance)</span>
-                  </label>
-                </div>
-              </div>
+            <div>
+              <label className="text-[#201f1e] block mb-1 font-semibold">Amount ($ USD)</label>
+              <input
+                required
+                type="number"
+                step="0.01"
+                min="0.10"
+                value={adjustForm.amount}
+                onChange={(e) =>
+                  setAdjustForm({ ...adjustForm, amount: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] font-bold text-sm focus:bg-white focus:outline-none focus:border-[#0078d4]"
+              />
+            </div>
 
-              <div>
-                <label className="text-[#201f1e] block mb-1 font-semibold">Amount ($ USD)</label>
-                <input
-                  required
-                  type="number"
-                  step="0.01"
-                  min="0.10"
-                  value={adjustForm.amount}
-                  onChange={(e) =>
-                    setAdjustForm({ ...adjustForm, amount: parseFloat(e.target.value) || 0 })
-                  }
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] font-bold text-sm focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                />
-              </div>
+            <div>
+              <label className="text-[#201f1e] block mb-1 font-semibold">Reason / Note</label>
+              <input
+                required
+                type="text"
+                placeholder="e.g. Promotional grant, manual compensation"
+                value={adjustForm.reason}
+                onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
+                className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
+              />
+            </div>
 
-              <div>
-                <label className="text-[#201f1e] block mb-1 font-semibold">Reason / Note</label>
-                <input
-                  required
-                  type="text"
-                  placeholder="e.g. Promotional grant, manual compensation"
-                  value={adjustForm.reason}
-                  onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#edebe9]">
-                <button
-                  type="button"
-                  onClick={() => setShowAdjustModal(false)}
-                  className="px-3.5 py-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#201f1e] text-xs font-medium transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || adjustForm.amount <= 0 || !adjustForm.userId}
-                  className="px-4 py-1.5 rounded-[4px] bg-[#0078d4] hover:bg-[#106ebe] disabled:bg-[#c7e0f4] text-white font-medium text-xs shadow-xs transition flex items-center gap-1.5"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Check className="h-3.5 w-3.5" />
-                  )}
-                  <span>{isSubmitting ? 'Executing...' : 'Execute Adjustment'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#edebe9]">
+              <button
+                type="button"
+                onClick={() => setShowAdjustModal(false)}
+                className="px-3.5 py-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#201f1e] text-xs font-medium transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || adjustForm.amount <= 0 || !adjustForm.userId}
+                className="px-4 py-1.5 rounded-[4px] bg-[#0078d4] hover:bg-[#106ebe] disabled:bg-[#c7e0f4] text-white font-medium text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Check className="h-3.5 w-3.5" />
+                )}
+                <span>{isSubmitting ? 'Executing...' : 'Execute Adjustment'}</span>
+              </button>
+            </div>
+          </form>
         </div>
-      )}
+      </Modal>
 
       {/* Floating Toast Notification */}
       {toast && (

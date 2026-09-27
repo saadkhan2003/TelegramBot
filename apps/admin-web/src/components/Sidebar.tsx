@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -24,6 +25,8 @@ import {
 import { useNavigation } from '../context/NavigationContext';
 import { useAuth } from '../context/AuthContext';
 import StoreSwitcher from './StoreSwitcher';
+import AboutStackAndScaleModal from './AboutStackAndScaleModal';
+import { Avatar } from './Avatar';
 
 const navigationGroups = [
   {
@@ -33,7 +36,6 @@ const navigationGroups = [
       { name: 'Products Catalog', href: '/products', icon: Package },
       { name: 'Inventory & Stock', href: '/inventory', icon: Layers },
       { name: 'Orders Management', href: '/orders', icon: ShoppingBag },
-      { name: 'Software House Partner', href: '/stack-and-scale', icon: Sparkles },
     ],
   },
   {
@@ -57,6 +59,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { isMobileMenuOpen, closeMobileMenu } = useNavigation();
   const { user, logout } = useAuth();
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
 
   return (
     <>
@@ -121,46 +124,41 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* Stack & Scale Edge Cluster Operational Status */}
+        {/* Stack & Scale Sovereign Software About Card */}
         <div className="px-3 py-2 border-t border-[#edebe9] bg-[#faf9f8]">
-          <Link
-            href="/stack-and-scale"
-            onClick={closeMobileMenu}
-            className="flex items-center justify-between p-2 rounded-[6px] bg-white border border-[#edebe9] hover:border-[#c7e0f4] hover:bg-[#eff6fc] transition group"
-            title="Stack & Scale Services Hub"
+          <button
+            type="button"
+            onClick={() => {
+              closeMobileMenu();
+              setIsAboutModalOpen(true);
+            }}
+            className="w-full text-left p-2.5 rounded-lg border border-[#edebe9] bg-white hover:bg-[#f3f2f1] hover:border-[#d2d0ce] transition-all cursor-pointer shadow-2xs group"
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-5 h-5 shrink-0 flex items-center justify-center">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <svg width="18" height="18" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <rect x="8" y="72" width="48" height="12" rx="3.5" fill="#1b1a19" fillOpacity="0.25" />
                   <rect x="26" y="47" width="48" height="13" rx="3.5" fill="#1b1a19" fillOpacity="0.55" />
                   <rect x="44" y="22" width="48" height="14" rx="3.5" fill="#1b1a19" />
                 </svg>
+                <span className="font-bold text-xs text-[#1b1a19] group-hover:text-[#0078d4] transition-colors">Stack &amp; Scale</span>
               </div>
-              <div className="min-w-0">
-                <div className="text-[11px] font-bold text-[#1b1a19] group-hover:text-[#0078d4] truncate flex items-baseline">
-                  Stack<span className="text-[#8a8886] font-medium mx-[2px] text-[0.85em]">&amp;</span>Scale
-                </div>
-                <div className="text-[9px] text-[#605e5c] truncate">Software House Partner</div>
-              </div>
+              <span className="text-[11px] font-medium text-[#605e5c] group-hover:text-[#1b1a19] group-hover:underline">About</span>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#107c10] animate-pulse" />
-              <span className="text-[9px] font-mono font-semibold text-[#107c10]">99.999%</span>
-            </div>
-          </Link>
+            <p className="mt-1 text-[11px] text-[#605e5c] truncate">Sovereign Software &amp; Enterprise Systems</p>
+          </button>
         </div>
 
         {/* User / Operator Row */}
         <div className="p-3 border-t border-[#edebe9] bg-[#faf9f8]">
           <div className="p-2.5 rounded-[6px] bg-white border border-[#edebe9] shadow-2xs space-y-2">
             <div className="flex items-center gap-2.5">
-              <div className="relative shrink-0">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#0f172a] via-[#1e293b] to-[#334155] text-white flex items-center justify-center font-bold text-[11px] tracking-wider shadow-xs">
-                  {user?.name ? user.name.slice(0, 2).toUpperCase() : 'AD'}
-                </div>
-                <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#107c10] border-2 border-white" />
-              </div>
+              <Avatar
+                name={user?.name}
+                email={user?.email}
+                size="md"
+                showOnline={true}
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-[#201f1e] truncate" title={user?.name || user?.email || 'Admin'}>
                   {user?.name || user?.email?.split('@')[0] || 'Admin'}
@@ -181,6 +179,12 @@ export default function Sidebar() {
           </div>
         </div>
       </aside>
+
+      {/* About Stack & Scale Modal */}
+      <AboutStackAndScaleModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
+      />
     </>
   );
 }

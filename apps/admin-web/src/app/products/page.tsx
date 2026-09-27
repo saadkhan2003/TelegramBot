@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Package,
   Plus,
@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
 import CategoryBadge from '../../components/CategoryBadge';
+import { Pagination } from '../../components/Pagination';
+import { SearchableSelect } from '../../components/SearchableSelect';
+import { Modal } from '../../components/Modal';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -23,6 +26,10 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState('');
   const [search, setSearch] = useState('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -186,6 +193,11 @@ export default function ProductsPage() {
       p.sku.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const paginatedProducts = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   // Selection helpers
   const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
   const someFilteredSelected = filtered.some((p) => selectedIds.has(p.id));
@@ -219,6 +231,37 @@ export default function ProductsPage() {
     }
   };
 
+  const categoryFilterOptions = useMemo(() => {
+    return [
+      { value: '', label: `All Categories (${categories.length})` },
+      ...categories.map((c) => ({
+        value: c.id,
+        label: c.name,
+      })),
+    ];
+  }, [categories]);
+
+  const modalCategoryOptions = useMemo(() => {
+    return categories.map((c) => ({
+      value: c.id,
+      label: c.name,
+    }));
+  }, [categories]);
+
+  const deliveryTypeOptions = [
+    { value: 'ACTIVATION_LINK', label: 'Activation Link', sublabel: 'URL or registration token' },
+    { value: 'PRELOADED_ACCOUNT', label: 'Preloaded Account', sublabel: 'Email:Password or User:Pass' },
+    { value: 'LICENSE_KEY', label: 'License Key', sublabel: 'Alphanumeric serial key' },
+    { value: 'REDEEM_CODE', label: 'Redeem Code', sublabel: 'Store gift code or voucher' },
+    { value: 'MANUAL_DELIVERY', label: 'Wholesaler On-Demand', sublabel: 'Sourced manually upon purchase' },
+  ];
+
+  const productStatusOptions = [
+    { value: 'ACTIVE', label: 'ACTIVE (Visible in Bot)', badge: 'Active', badgeColor: 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]' },
+    { value: 'INACTIVE', label: 'INACTIVE (Hidden from Bot)', badge: 'Inactive', badgeColor: 'bg-[#f3f2f1] text-[#605e5c] border-[#edebe9]' },
+    { value: 'ARCHIVED', label: 'ARCHIVED (Discontinued)', badge: 'Archived', badgeColor: 'bg-[#f3f2f1] text-[#605e5c] border-[#edebe9]' },
+  ];
+
   return (
     <div className="space-y-6 max-w-7xl pb-12">
       {/* Header */}
@@ -251,7 +294,7 @@ export default function ProductsPage() {
 
       {/* Filter Bar */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 bg-white p-3 rounded-[4px] border border-[#edebe9] shadow-sm">
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-0">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8886]" />
           <input
             type="text"
@@ -262,18 +305,15 @@ export default function ProductsPage() {
           />
         </div>
 
-        <select
+        <SearchableSelect
           value={selectedCat}
-          onChange={(e) => setSelectedCat(e.target.value)}
-          className="bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] px-3 py-1.5 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-        >
-          <option value="">All Categories ({categories.length})</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onChange={setSelectedCat}
+          options={categoryFilterOptions}
+          placeholder="All Categories"
+          searchPlaceholder="Search category..."
+          className="w-full sm:w-56 shrink-0"
+          searchable={true}
+        />
       </div>
 
       {/* Bulk Action Bar */}
@@ -325,8 +365,8 @@ export default function ProductsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
-            {filtered.length > 0 ? (
-              filtered.map((p) => (
+            {paginatedProducts.length > 0 ? (
+              paginatedProducts.map((p) => (
                 <tr key={p.id} className={`hover:bg-[#faf9f8] transition ${selectedIds.has(p.id) ? 'bg-[#eff6fc]' : ''}`}>
                   <td className="px-3 py-4">
                     <input
@@ -396,12 +436,27 @@ export default function ProductsPage() {
             )}
           </tbody>
         </table>
+
+        {/* Pagination Bar */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="products"
+        />
       </div>
 
       {/* Create / Edit Product Modal */}
-      {(showCreateModal || editProduct) && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[4px] p-6 max-w-md w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+      <Modal
+        isOpen={Boolean(showCreateModal || editProduct)}
+        onClose={() => {
+          setShowCreateModal(false);
+          setEditProduct(null);
+        }}
+      >
+        <div className="bg-white border border-[#edebe9] rounded-[6px] p-6 max-w-md w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
             <div className="border-b border-[#edebe9] pb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-[#201f1e]">
@@ -460,47 +515,41 @@ export default function ProductsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[#201f1e] block mb-1 font-semibold">Category</label>
-                  <select
-                    required
+                  <SearchableSelect
                     value={formData.categoryId}
-                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                    className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, categoryId: val })}
+                    options={modalCategoryOptions}
+                    placeholder="Select Category..."
+                    searchPlaceholder="Search category..."
+                    className="w-full py-2"
+                    menuClassName="w-full"
+                    searchable={true}
+                    required
+                  />
                 </div>
                 <div>
                   <label className="text-[#201f1e] block mb-1 font-semibold">Delivery Type</label>
-                  <select
+                  <SearchableSelect
                     value={formData.deliveryType}
-                    onChange={(e) => setFormData({ ...formData, deliveryType: e.target.value })}
-                    className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                  >
-                    <option value="ACTIVATION_LINK">Activation Link</option>
-                    <option value="PRELOADED_ACCOUNT">Preloaded Account</option>
-                    <option value="LICENSE_KEY">License Key</option>
-                    <option value="REDEEM_CODE">Redeem Code</option>
-                    <option value="MANUAL_DELIVERY">Wholesaler On-Demand</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, deliveryType: val })}
+                    options={deliveryTypeOptions}
+                    className="w-full py-2"
+                    menuClassName="w-full"
+                    searchable={false}
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="text-[#201f1e] block mb-1 font-semibold">Status</label>
-                <select
+                <SearchableSelect
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
-                >
-                  <option value="ACTIVE">ACTIVE (Visible in Bot)</option>
-                  <option value="INACTIVE">INACTIVE (Hidden from Bot)</option>
-                  <option value="ARCHIVED">ARCHIVED</option>
-                </select>
+                  onChange={(val) => setFormData({ ...formData, status: val })}
+                  options={productStatusOptions}
+                  className="w-full py-2"
+                  menuClassName="w-full"
+                  searchable={false}
+                />
               </div>
 
               <div>
@@ -539,13 +588,12 @@ export default function ProductsPage() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Delete / Archive Confirmation Modal */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[4px] p-6 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+      <Modal isOpen={Boolean(deleteConfirmId)} onClose={() => setDeleteConfirmId(null)}>
+        {deleteConfirmId && (
+          <div className="bg-white border border-[#edebe9] rounded-[6px] p-6 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
             <div className="border-b border-[#edebe9] pb-3">
               <h3 className="text-sm font-bold text-[#201f1e]">Archive Product?</h3>
               <p className="text-xs text-[#605e5c] mt-0.5">
@@ -554,52 +602,68 @@ export default function ProductsPage() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-3.5 py-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#201f1e] text-xs font-medium transition"
+                className="px-3.5 py-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#201f1e] text-xs font-medium transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => handleDelete(deleteConfirmId)}
-                className="px-4 py-1.5 rounded-[4px] bg-[#d13438] hover:bg-[#a4262c] text-white text-xs font-medium shadow-xs transition"
+                className="px-4 py-1.5 rounded-[4px] bg-[#d13438] hover:bg-[#a4262c] text-white text-xs font-medium shadow-xs transition cursor-pointer"
               >
                 Archive Product
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
+
       {/* Bulk Delete Confirmation Modal */}
-      {showBulkDeleteConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#edebe9] rounded-[4px] p-5 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
-            <div className="border-b border-[#edebe9] pb-2.5 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-[#a4262c]">Confirm Bulk Delete</h3>
-                <p className="text-[11px] text-[#605e5c] mt-0.5">
-                  This will permanently archive {selectedIds.size} product{selectedIds.size > 1 ? 's' : ''}.
-                </p>
-              </div>
-              <button onClick={() => setShowBulkDeleteConfirm(false)} className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c]">
-                <X className="h-4 w-4" />
-              </button>
+      <Modal isOpen={showBulkDeleteConfirm} onClose={() => setShowBulkDeleteConfirm(false)}>
+        <div className="bg-white border border-[#edebe9] rounded-[6px] p-5 max-w-sm w-full space-y-4 shadow-fluentModal animate-in zoom-in-95">
+          <div className="border-b border-[#edebe9] pb-2.5 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-[#a4262c]">Confirm Bulk Delete</h3>
+              <p className="text-[11px] text-[#605e5c] mt-0.5">
+                This will permanently archive {selectedIds.size} product{selectedIds.size > 1 ? 's' : ''}.
+              </p>
             </div>
-            <div className="p-3 rounded-[4px] bg-[#fde7e9] border border-[#f8d2d4] text-xs text-[#a4262c]">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <p>Selected products will be removed from the Telegram bot catalog. Existing orders remain in the ledger.</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#edebe9]">
-              <button onClick={() => setShowBulkDeleteConfirm(false)} className="px-3 py-1.5 rounded-[4px] border border-[#d2d0ce] hover:bg-[#f3f2f1] text-[#605e5c] text-xs font-medium transition">Cancel</button>
-              <button onClick={handleBulkDelete} disabled={bulkDeleting} className="px-3.5 py-1.5 rounded-[4px] bg-[#a4262c] hover:bg-[#8b2025] text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5">
-                {bulkDeleting && <Loader2 className="h-3 w-3 animate-spin" />}
-                <span>{bulkDeleting ? 'Deleting...' : `Delete ${selectedIds.size} Product${selectedIds.size > 1 ? 's' : ''}`}</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setShowBulkDeleteConfirm(false)}
+              className="p-1 rounded-[4px] hover:bg-[#f3f2f1] text-[#605e5c] cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-3 rounded-[4px] bg-[#fde7e9] border border-[#f8d2d4] text-xs text-[#a4262c]">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <p>Selected products will be removed from the Telegram bot catalog. Existing orders remain in the ledger.</p>
             </div>
           </div>
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#edebe9]">
+            <button
+              type="button"
+              onClick={() => setShowBulkDeleteConfirm(false)}
+              className="px-3 py-1.5 rounded-[4px] border border-[#d2d0ce] hover:bg-[#f3f2f1] text-[#605e5c] text-xs font-medium transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="px-3.5 py-1.5 rounded-[4px] bg-[#a4262c] hover:bg-[#8b2025] text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              {bulkDeleting && <Loader2 className="h-3 w-3 animate-spin" />}
+              <span>{bulkDeleting ? 'Deleting...' : `Delete ${selectedIds.size} Product${selectedIds.size > 1 ? 's' : ''}`}</span>
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
 
       {/* Floating Toast Notification */}
       {toast && (

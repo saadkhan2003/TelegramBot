@@ -19,20 +19,80 @@ body {
   padding: 0;
 }
 
-/* Microsoft Fluent Scrollbars */
+/* Sleek Ultra-Thin Minimalist Scrollbars */
+/* Firefox only */
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+  }
+}
+
+/* Chrome, Brave, Safari, Edge (WebKit/Blink) */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 3.5px !important;
+  height: 3.5px !important;
 }
+
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 ::-webkit-scrollbar-track {
-  background: #f3f2f1;
+  background: transparent !important;
 }
+
+::-webkit-scrollbar-track-piece {
+  background: transparent !important;
+}
+
 ::-webkit-scrollbar-thumb {
-  background: #c8c6c4;
-  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.45) !important;
+  border-radius: 9999px !important;
+  transition: background-color 0.2s ease !important;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #8a8886;
+  background: rgba(100, 116, 139, 0.75) !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* Explicit class for modal inner scrollers */
+.thin-scrollbar {
+  -webkit-overflow-scrolling: touch;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 3px !important;
+  height: 3px !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track-piece {
+  background: transparent !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45) !important;
+  border-radius: 9999px !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8) !important;
 }
 
 /* Prevent Next.js floating dev button from covering sidebar navigation */
