@@ -188,74 +188,76 @@ export default function WalletsPage() {
       )}
 
       {/* Ledger Table */}
-      <div className="bg-white border border-[#edebe9] rounded-[4px] overflow-x-auto shadow-sm">
-        <table className="w-full text-left text-xs min-w-[700px]">
-          <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
-            <tr>
-              <th className="px-3 py-3 w-10">
-                <input type="checkbox" checked={allFilteredSelected} ref={(el) => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected; }} onChange={toggleSelectAll} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
-              </th>
-              <th className="px-4 py-3 font-semibold">Type</th>
-              <th className="px-4 py-3 font-semibold">Customer</th>
-              <th className="px-4 py-3 font-semibold">Amount</th>
-              <th className="px-4 py-3 font-semibold">Balance Before</th>
-              <th className="px-4 py-3 font-semibold">Balance After</th>
-              <th className="px-4 py-3 font-semibold">Description</th>
-              <th className="px-4 py-3 font-semibold">Date</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
-            {filtered.length > 0 ? (
-              filtered.map((tx) => (
-                <tr key={tx.id} className={`hover:bg-[#faf9f8] transition ${selectedIds.has(tx.id) ? 'bg-[#eff6fc]' : ''}`}>
-                  <td className="px-3 py-4">
-                    <input type="checkbox" checked={selectedIds.has(tx.id)} onChange={() => toggleSelect(tx.id)} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] text-[10px] font-bold border ${
-                        tx.direction === 'CREDIT'
-                          ? 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]'
-                          : 'bg-[#fde7e9] text-[#d13438] border-[#f8bbd0]'
+      <div className="bg-white border border-[#edebe9] rounded-[4px] shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs min-w-[700px]">
+            <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
+              <tr>
+                <th className="px-3 py-3 w-10">
+                  <input type="checkbox" checked={allFilteredSelected} ref={(el) => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected; }} onChange={toggleSelectAll} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
+                </th>
+                <th className="px-4 py-3 font-semibold">Type</th>
+                <th className="px-4 py-3 font-semibold">Customer</th>
+                <th className="px-4 py-3 font-semibold">Amount</th>
+                <th className="px-4 py-3 font-semibold">Balance Before</th>
+                <th className="px-4 py-3 font-semibold">Balance After</th>
+                <th className="px-4 py-3 font-semibold">Description</th>
+                <th className="px-4 py-3 font-semibold">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
+              {filtered.length > 0 ? (
+                filtered.map((tx) => (
+                  <tr key={tx.id} className={`hover:bg-[#faf9f8] transition ${selectedIds.has(tx.id) ? 'bg-[#eff6fc]' : ''}`}>
+                    <td className="px-3 py-4">
+                      <input type="checkbox" checked={selectedIds.has(tx.id)} onChange={() => toggleSelect(tx.id)} className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] text-[10px] font-bold border ${
+                          tx.direction === 'CREDIT'
+                            ? 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]'
+                            : 'bg-[#fde7e9] text-[#d13438] border-[#f8bbd0]'
+                        }`}
+                      >
+                        {tx.direction === 'CREDIT' ? (
+                          <ArrowDownLeft className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpRight className="h-3 w-3" />
+                        )}
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-[#201f1e]">
+                      {tx.wallet?.user?.telegramUsername
+                        ? `@${tx.wallet.user.telegramUsername}`
+                        : tx.wallet?.user?.firstName || 'User'}
+                    </td>
+                    <td
+                      className={`px-6 py-4 font-bold ${
+                        tx.direction === 'CREDIT' ? 'text-[#107c10]' : 'text-[#d13438]'
                       }`}
                     >
-                      {tx.direction === 'CREDIT' ? (
-                        <ArrowDownLeft className="h-3 w-3" />
-                      ) : (
-                        <ArrowUpRight className="h-3 w-3" />
-                      )}
-                      {tx.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-[#201f1e]">
-                    {tx.wallet?.user?.telegramUsername
-                      ? `@${tx.wallet.user.telegramUsername}`
-                      : tx.wallet?.user?.firstName || 'User'}
-                  </td>
-                  <td
-                    className={`px-6 py-4 font-bold ${
-                      tx.direction === 'CREDIT' ? 'text-[#107c10]' : 'text-[#d13438]'
-                    }`}
-                  >
-                    {tx.direction === 'CREDIT' ? '+' : '-'}${Number(tx.amount).toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 text-[#605e5c]">${Number(tx.balanceBefore).toFixed(2)}</td>
-                  <td className="px-6 py-4 font-semibold text-[#201f1e]">${Number(tx.balanceAfter).toFixed(2)}</td>
-                  <td className="px-6 py-4 text-[#605e5c] max-w-xs truncate">{tx.description}</td>
-                  <td className="px-6 py-4 text-[#605e5c] text-[11px]">
-                    {tx.createdAt ? tx.createdAt.slice(0, 10) : '—'}
+                      {tx.direction === 'CREDIT' ? '+' : '-'}${Number(tx.amount).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-[#605e5c]">${Number(tx.balanceBefore).toFixed(2)}</td>
+                    <td className="px-6 py-4 font-semibold text-[#201f1e]">${Number(tx.balanceAfter).toFixed(2)}</td>
+                    <td className="px-6 py-4 text-[#605e5c] max-w-xs truncate">{tx.description}</td>
+                    <td className="px-6 py-4 text-[#605e5c] text-[11px]">
+                      {tx.createdAt ? tx.createdAt.slice(0, 10) : '—'}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="px-6 py-8 text-center text-[#605e5c]">
+                    No ledger transactions match your search or filter criteria.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-[#605e5c]">
-                  No ledger transactions match your search or filter criteria.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Manual Adjustment Modal */}

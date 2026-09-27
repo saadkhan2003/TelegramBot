@@ -163,24 +163,29 @@ export default function Header() {
   };
 
   return (
-    <header className="h-14 bg-white/95 backdrop-blur-md border-b border-[#e2e8f0] flex items-center justify-between px-3 sm:px-6 sticky top-0 z-30 shadow-2xs select-none">
+    <header className="h-14 bg-white/95 backdrop-blur-md border-b border-[#e2e8f0] flex items-center justify-between px-2.5 sm:px-6 sticky top-0 z-30 shadow-2xs select-none gap-1.5 sm:gap-3">
       {/* 1. Left Section: Breadcrumb & Context Navigation */}
-      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
         {/* Mobile Hamburger Drawer Toggle */}
         <button
           onClick={toggleMobileMenu}
-          className="lg:hidden p-1.5 rounded-[5px] text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition -ml-1 shrink-0 cursor-pointer"
+          className="lg:hidden p-1.5 rounded-[5px] text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition shrink-0 cursor-pointer"
           aria-label="Open navigation menu"
         >
           <Menu className="h-5 w-5" />
         </button>
 
         {/* Mobile Brand Emblem */}
-        <div className="lg:hidden flex items-center gap-1.5 shrink-0">
+        <div className="lg:hidden flex items-center gap-1 shrink-0">
           <div className="h-6 w-6 rounded-[5px] bg-[#051329] border border-[#0078d4]/30 overflow-hidden shadow-xs p-[1px]">
             <img src="/icons/icon-192.png" alt="Delux Store" className="h-full w-full object-cover rounded-[4px]" />
           </div>
         </div>
+
+        {/* Mobile Current Page Title */}
+        <span className="sm:hidden text-xs font-bold text-[#0f172a] truncate max-w-[85px] xs:max-w-[125px]">
+          {currentRoute.title}
+        </span>
 
         {/* Desktop Breadcrumb Hierarchy */}
         <div className="hidden sm:flex items-center gap-2 text-xs">
@@ -196,19 +201,20 @@ export default function Header() {
       </div>
 
       {/* 2. Center Section: Executive Command Search Bar */}
-      <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-2 sm:mx-4">
+      <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg min-w-0 mx-1 sm:mx-4">
         <button
           type="button"
           onClick={() => setIsCommandPaletteOpen(true)}
-          className="w-full bg-[#f8fafc] hover:bg-white border border-[#e2e8f0] hover:border-[#cbd5e1] rounded-[6px] pl-3.5 pr-2.5 py-1.5 text-xs text-[#64748b] hover:text-[#0f172a] flex items-center justify-between transition shadow-2xs group cursor-pointer text-left"
+          className="w-full bg-[#f8fafc] hover:bg-white border border-[#e2e8f0] hover:border-[#cbd5e1] rounded-[6px] px-2.5 sm:pl-3.5 sm:pr-2.5 py-1.5 text-xs text-[#64748b] hover:text-[#0f172a] flex items-center justify-between transition shadow-2xs group cursor-pointer text-left"
           title="Open Omnisearch & Command Palette (Ctrl+K)"
         >
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <Search className="h-3.5 w-3.5 text-[#94a3b8] group-hover:text-[#0078d4] transition shrink-0" />
-            <span className="truncate text-xs font-normal">Search orders, customers, inventory, commands...</span>
+            <span className="truncate text-xs font-normal sm:hidden">Search...</span>
+            <span className="truncate text-xs font-normal hidden sm:inline">Search orders, customers, inventory, commands...</span>
           </div>
-          <div className="flex items-center gap-1 shrink-0 ml-2">
-            <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono text-[#94a3b8] bg-white border border-[#e2e8f0] group-hover:border-[#cbd5e1] px-1.5 py-0.5 rounded shadow-2xs transition">
+          <div className="hidden sm:flex items-center gap-1 shrink-0 ml-2">
+            <kbd className="inline-flex items-center gap-0.5 text-[10px] font-mono text-[#94a3b8] bg-white border border-[#e2e8f0] group-hover:border-[#cbd5e1] px-1.5 py-0.5 rounded shadow-2xs transition">
               ⌘K
             </kbd>
           </div>
@@ -216,7 +222,7 @@ export default function Header() {
       </div>
 
       {/* 3. Right Section: Quick Action, Bot Status, Notifications & Profile */}
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         {/* Quick Action Button */}
         <div className="relative" ref={quickActionRef}>
           <button
@@ -294,7 +300,7 @@ export default function Header() {
           </button>
 
           {isOpen && (
-            <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white border border-[#edebe9] rounded-[6px] shadow-fluentModal z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
+            <div className="fixed inset-x-3 top-16 sm:inset-x-auto sm:right-6 sm:top-full sm:mt-2 sm:w-96 max-w-sm sm:max-w-none ml-auto bg-white border border-[#edebe9] rounded-[8px] shadow-fluentModal z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100 max-h-[calc(100dvh-5rem)]">
               <div className="px-4 py-3 border-b border-[#edebe9] bg-[#faf9f8] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-xs font-bold text-[#201f1e]">Notifications</h3>
@@ -375,13 +381,13 @@ export default function Header() {
         </div>
 
         {/* Clean Hairline Vertical Divider */}
-        <div className="h-5 w-[1px] bg-[#e2e8f0]" />
+        <div className="hidden sm:block h-5 w-[1px] bg-[#e2e8f0]" />
 
         {/* Executive User Profile Pill Dropdown */}
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className={`flex items-center gap-2 pl-1 pr-2 py-1 rounded-[6px] transition-all border cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 p-1 sm:pl-1 sm:pr-2 sm:py-1 rounded-[6px] transition-all border cursor-pointer ${
               isProfileOpen
                 ? 'bg-[#eff6fc] border-[#c7e0f4] shadow-2xs'
                 : 'border-transparent hover:bg-[#f8fafc] hover:border-[#e2e8f0]'
@@ -401,14 +407,14 @@ export default function Header() {
             </div>
 
             <ChevronDown
-              className={`h-3.5 w-3.5 text-[#94a3b8] transition-transform duration-200 ${
+              className={`hidden sm:block h-3.5 w-3.5 text-[#94a3b8] transition-transform duration-200 ${
                 isProfileOpen ? 'rotate-180 text-[#0f172a]' : ''
               }`}
             />
           </button>
 
           {isProfileOpen && (
-            <div className="absolute right-0 mt-2 w-72 bg-white rounded-[8px] shadow-fluentModal border border-[#edebe9] z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden divide-y divide-[#edebe9]">
+            <div className="fixed right-3 top-16 w-[calc(100vw-1.5rem)] max-w-[280px] sm:max-w-none sm:absolute sm:right-0 sm:top-full sm:mt-2 sm:w-72 bg-white rounded-[8px] shadow-fluentModal border border-[#edebe9] z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden divide-y divide-[#edebe9]">
               {/* Profile Card Header */}
               <div className="p-3.5 bg-gradient-to-b from-[#faf9f8] to-white">
                 <div className="flex items-center gap-3">

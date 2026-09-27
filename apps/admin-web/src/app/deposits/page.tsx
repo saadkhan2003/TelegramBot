@@ -207,8 +207,9 @@ export default function DepositsPage() {
       )}
 
       {/* Deposits Table */}
-      <div className="bg-white border border-[#edebe9] rounded-[4px] overflow-x-auto shadow-sm">
-        <table className="w-full text-left text-xs min-w-[700px]">
+      <div className="bg-white border border-[#edebe9] rounded-[4px] shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs min-w-[700px]">
           <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
             <tr>
               <th className="px-3 py-3 w-10">
@@ -362,6 +363,7 @@ export default function DepositsPage() {
             )}
           </tbody>
         </table>
+        </div>
 
         {/* Pagination Bar */}
         <Pagination

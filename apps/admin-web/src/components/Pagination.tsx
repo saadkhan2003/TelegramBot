@@ -58,10 +58,10 @@ export function Pagination({
 
   return (
     <div
-      className={`flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-[#faf9f8] border-t border-[#edebe9] text-xs text-[#605e5c] select-none rounded-b-[4px] ${className}`}
+      className={`flex flex-col sm:flex-row items-center justify-between gap-2.5 px-3 sm:px-4 py-2.5 sm:py-3 bg-[#faf9f8] border-t border-[#edebe9] text-xs text-[#605e5c] select-none rounded-b-[4px] ${className}`}
     >
       {/* Left: Size picker & range info */}
-      <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+      <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 w-full sm:w-auto justify-between sm:justify-start">
         {onPageSizeChange && (
           <div className="flex items-center gap-1.5">
             <span className="text-[#8a8886]">Rows per page:</span>
@@ -90,7 +90,7 @@ export function Pagination({
       </div>
 
       {/* Right: Page Navigation */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center justify-center gap-1 flex-wrap w-full sm:w-auto">
         {/* First Page */}
         <button
           onClick={() => onPageChange(1)}
@@ -112,7 +112,7 @@ export function Pagination({
         </button>
 
         {/* Page Number Buttons */}
-        <div className="flex items-center gap-1 mx-1">
+        <div className="flex items-center gap-1 mx-0.5">
           {visiblePages.map((p, idx) => {
             if (p === '...') {
               return (

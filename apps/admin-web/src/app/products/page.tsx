@@ -341,101 +341,103 @@ export default function ProductsPage() {
       )}
 
       {/* Products Table */}
-      <div className="bg-white border border-[#edebe9] rounded-[4px] overflow-x-auto shadow-sm">
-        <table className="w-full text-left text-xs min-w-[700px]">
-          <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
-            <tr>
-              <th className="px-3 py-3 w-10">
-                <input
-                  type="checkbox"
-                  checked={allFilteredSelected}
-                  ref={(el) => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected; }}
-                  onChange={toggleSelectAll}
-                  className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]"
-                />
-              </th>
-              <th className="px-4 py-3 font-semibold">Product Name</th>
-              <th className="px-4 py-3 font-semibold">Category</th>
-              <th className="px-4 py-3 font-semibold">SKU</th>
-              <th className="px-4 py-3 font-semibold">Price</th>
-              <th className="px-4 py-3 font-semibold">Available Stock</th>
-              <th className="px-4 py-3 font-semibold">Delivery Type</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
-              <th className="px-4 py-3 font-semibold text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
-            {paginatedProducts.length > 0 ? (
-              paginatedProducts.map((p) => (
-                <tr key={p.id} className={`hover:bg-[#faf9f8] transition ${selectedIds.has(p.id) ? 'bg-[#eff6fc]' : ''}`}>
-                  <td className="px-3 py-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(p.id)}
-                      onChange={() => toggleSelect(p.id)}
-                      className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]"
-                    />
-                  </td>
-                  <td className="px-4 py-4 font-semibold text-[#201f1e]">{p.name}</td>
-                  <td className="px-6 py-4">
-                    <CategoryBadge name={p.category?.name} />
-                  </td>
-                  <td className="px-6 py-4 font-mono text-[11px] text-[#0078d4] font-medium">{p.sku}</td>
-                  <td className="px-6 py-4 font-bold text-[#201f1e]">${Number(p.normalPrice).toFixed(2)}</td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex px-2 py-0.5 rounded-[2px] text-[11px] font-semibold border ${
-                        p.availableStock > 0
-                          ? 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]'
-                          : 'bg-[#fde7e9] text-[#d13438] border-[#f8bbd0]'
-                      }`}
-                    >
-                      {p.availableStock} available
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-[#605e5c] font-mono text-[11px]">{p.deliveryType}</td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => handleToggleStatus(p)}
-                      title="Click to toggle status"
-                      className={`inline-flex px-2 py-0.5 rounded-[2px] text-[11px] font-semibold border cursor-pointer hover:opacity-80 transition ${
-                        p.status === 'ACTIVE'
-                          ? 'bg-[#eff6fc] text-[#0078d4] border-[#c7e0f4]'
-                          : 'bg-[#f3f2f1] text-[#605e5c] border-[#edebe9]'
-                      }`}
-                    >
-                      {p.status}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => openEdit(p)}
-                        className="p-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#0078d4] hover:text-[#106ebe] shadow-xs transition"
-                        title="Edit Product"
+      <div className="bg-white border border-[#edebe9] rounded-[4px] shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs min-w-[700px]">
+            <thead className="bg-[#faf9f8] text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9] text-[11px]">
+              <tr>
+                <th className="px-3 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    ref={(el) => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected; }}
+                    onChange={toggleSelectAll}
+                    className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]"
+                  />
+                </th>
+                <th className="px-4 py-3 font-semibold">Product Name</th>
+                <th className="px-4 py-3 font-semibold">Category</th>
+                <th className="px-4 py-3 font-semibold">SKU</th>
+                <th className="px-4 py-3 font-semibold">Price</th>
+                <th className="px-4 py-3 font-semibold">Available Stock</th>
+                <th className="px-4 py-3 font-semibold">Delivery Type</th>
+                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#edebe9] text-[#201f1e]">
+              {paginatedProducts.length > 0 ? (
+                paginatedProducts.map((p) => (
+                  <tr key={p.id} className={`hover:bg-[#faf9f8] transition ${selectedIds.has(p.id) ? 'bg-[#eff6fc]' : ''}`}>
+                    <td className="px-3 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(p.id)}
+                        onChange={() => toggleSelect(p.id)}
+                        className="h-3.5 w-3.5 rounded-[2px] border-[#8a8886] text-[#0078d4] focus:ring-[#0078d4] cursor-pointer accent-[#0078d4]"
+                      />
+                    </td>
+                    <td className="px-4 py-4 font-semibold text-[#201f1e]">{p.name}</td>
+                    <td className="px-6 py-4">
+                      <CategoryBadge name={p.category?.name} />
+                    </td>
+                    <td className="px-6 py-4 font-mono text-[11px] text-[#0078d4] font-medium">{p.sku}</td>
+                    <td className="px-6 py-4 font-bold text-[#201f1e]">${Number(p.normalPrice).toFixed(2)}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded-[2px] text-[11px] font-semibold border ${
+                          p.availableStock > 0
+                            ? 'bg-[#dff6dd] text-[#107c10] border-[#a8e5a3]'
+                            : 'bg-[#fde7e9] text-[#d13438] border-[#f8bbd0]'
+                        }`}
                       >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
+                        {p.availableStock} available
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-[#605e5c] font-mono text-[11px]">{p.deliveryType}</td>
+                    <td className="px-6 py-4">
                       <button
-                        onClick={() => setDeleteConfirmId(p.id)}
-                        className="p-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#fde7e9] text-[#605e5c] hover:text-[#d13438] shadow-xs transition"
-                        title="Archive Product"
+                        onClick={() => handleToggleStatus(p)}
+                        title="Click to toggle status"
+                        className={`inline-flex px-2 py-0.5 rounded-[2px] text-[11px] font-semibold border cursor-pointer hover:opacity-80 transition ${
+                          p.status === 'ACTIVE'
+                            ? 'bg-[#eff6fc] text-[#0078d4] border-[#c7e0f4]'
+                            : 'bg-[#f3f2f1] text-[#605e5c] border-[#edebe9]'
+                        }`}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        {p.status}
                       </button>
-                    </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => openEdit(p)}
+                          className="p-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#0078d4] hover:text-[#106ebe] shadow-xs transition"
+                          title="Edit Product"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmId(p.id)}
+                          className="p-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#fde7e9] text-[#605e5c] hover:text-[#d13438] shadow-xs transition"
+                          title="Archive Product"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={9} className="px-6 py-8 text-center text-[#605e5c]">
+                    No products found matching your filter criteria.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={9} className="px-6 py-8 text-center text-[#605e5c]">
-                  No products found matching your filter criteria.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination Bar */}
         <Pagination
