@@ -111,6 +111,24 @@ export class MultiBotManager {
               console.log(
                 `🤖 [Tenant: ${store.name}] Bot started as @${info.username} (Store ID: ${store.id.slice(0, 8)})`,
               );
+              // Auto-sync slash commands so Telegram displays autocomplete menu
+              bot.api
+                .setMyCommands([
+                  { command: 'start', description: '🏠 Open main menu & welcome' },
+                  { command: 'menu', description: '📋 Main navigation menu' },
+                  { command: 'shop', description: '🛍️ Browse products & categories' },
+                  { command: 'wallet', description: '💳 Check balance & deposit funds' },
+                  { command: 'orders', description: '📦 View order history & keys' },
+                  { command: 'profile', description: '👤 View account & statistics' },
+                  { command: 'referral', description: '🎁 Affiliate program & invite link' },
+                  { command: 'support', description: '💬 Help & customer support' },
+                  { command: 'language', description: '🌐 Change language preference' },
+                  { command: 'cancel', description: '❌ Cancel current form or action' },
+                ])
+                .catch((err) => {
+                  console.warn(`Could not set commands for @${info.username}:`, err.message);
+                });
+
               // Update username in database if needed
               if (store.botUsername !== info.username) {
                 prisma.store

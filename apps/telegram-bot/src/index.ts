@@ -41,6 +41,27 @@ export const bot = new Bot(BOT_TOKEN || 'dummy_token', {
 });
 const verifier = new BlockchainPaymentVerifier();
 
+export const DEFAULT_BOT_COMMANDS = [
+  { command: 'start', description: '🏠 Open main menu & welcome' },
+  { command: 'menu', description: '📋 Main navigation menu' },
+  { command: 'shop', description: '🛍️ Browse products & categories' },
+  { command: 'wallet', description: '💳 Check balance & deposit funds' },
+  { command: 'orders', description: '📦 View order history & keys' },
+  { command: 'profile', description: '👤 View account & statistics' },
+  { command: 'referral', description: '🎁 Affiliate program & invite link' },
+  { command: 'support', description: '💬 Help & customer support' },
+  { command: 'language', description: '🌐 Change language preference' },
+  { command: 'cancel', description: '❌ Cancel current form or action' },
+];
+
+export async function syncBotCommands(targetBot: Bot) {
+  try {
+    await targetBot.api.setMyCommands(DEFAULT_BOT_COMMANDS);
+  } catch (err: any) {
+    console.warn('⚠️ Could not sync slash commands with Telegram:', err.message);
+  }
+}
+
 // In-memory / temporary state storage (or can connect Redis)
 const userStates = new Map<bigint, { state: string; metadata?: any }>();
 
@@ -519,6 +540,327 @@ export function registerBotHandlers(bot: Bot, store?: any) {
 
     await ctx.reply(welcomeText, {
       reply_markup: buildMainMenu(user.preferredLanguage),
+    });
+  });
+
+  // /menu command (Main Menu)
+  bot.command(['menu', 'home'], async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+    userStates.delete(user.telegramUserId);
+
+    const customWelcome = await getScreenConfig('welcome');
+    if (customWelcome) {
+      const { text: customText, keyboard: customKb } = renderScreen(customWelcome, {
+        storeName,
+        username: user.telegramUsername || user.firstName || 'User',
+        firstName: user.firstName || 'User',
+        balance: Number(user.wallet?.cachedBalance ?? 0).toFixed(2),
+        deposited: Number(user.wallet?.totalDeposited ?? 0).toFixed(2),
+        spent: Number(user.wallet?.totalSpent ?? 0).toFixed(2),
+      });
+      try {
+        await ctx.reply(customText, {
+          reply_markup: customKb,
+          parse_mode: 'Markdown',
+        });
+        return;
+      } catch {
+        await ctx.reply(customText, { reply_markup: customKb });
+        return;
+      }
+    }
+
+    const welcomeText = t('welcome.title', user.preferredLanguage, { storeName });
+    await ctx.reply(welcomeText, {
+      reply_markup: buildMainMenu(user.preferredLanguage),
+    });
+  });
+
+  // /shop, /catalog, /buy commands
+  bot.command(['shop', 'catalog', 'buy'], async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+
+    const categories = await prisma.category.findMany({
+      where: {
+        status: CategoryStatus.ACTIVE,
+        ...(store?.id ? { OR: [{ storeId: store.id }, { storeId: null }] } : {}),
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const keyboard = new InlineKeyboard();
+    categories.forEach((cat, idx) => {
+      keyboard.text(`${cat.emoji || '📁'} ${cat.name}`, `cat_${cat.id}`);
+      if (idx % 2 === 1) keyboard.row();
+    });
+
+    if (categories.length % 2 !== 0) keyboard.row();
+    keyboard
+      .text(t('catalog.search', user.preferredLanguage), 'search_prompt')
+      .row()
+      .text(t('menu.main', user.preferredLanguage), 'nav_main');
+
+    await ctx.reply(t('catalog.title', user.preferredLanguage), {
+      reply_markup: keyboard,
+    });
+  });
+
+  // /wallet, /balance, /deposit commands
+  bot.command(['wallet', 'balance', 'deposit'], async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+
+    const [networks, rateSetting] = await Promise.all([
+      prisma.paymentNetwork.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      }),
+      prisma.systemSetting.findUnique({ where: { key: 'usd_to_pkr_rate' } }),
+    ]);
+
+    const pkrRate = rateSetting ? Number(rateSetting.value) || 280 : 280;
+    const wallet = user.wallet;
+    const balance = Number(wallet?.cachedBalance ?? 0);
+    const deposited = Number(wallet?.totalDeposited ?? 0);
+    const spent = Number(wallet?.totalSpent ?? 0);
+    const referrals = Number(wallet?.referralEarnings ?? 0);
+
+    const balancePkr = (balance * pkrRate).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    const depositedPkr = (deposited * pkrRate).toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+    const text =
+      `💼 *My Wallet / والیٹ*\n\n` +
+      `💰 *Available Balance:* $${balance.toFixed(2)} *(Rs. ${balancePkr} PKR)*\n` +
+      `📥 *Total Deposited:* $${deposited.toFixed(2)} (Rs. ${depositedPkr} PKR)\n` +
+      `🛍 *Total Spent:* $${spent.toFixed(2)}\n` +
+      `🎁 *Referral Earnings:* $${referrals.toFixed(2)}\n\n` +
+      `💱 *Exchange Rate:* $1.00 USD = Rs. ${pkrRate} PKR\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `💳 *Choose Payment Method to Top-Up:*`;
+
+    const keyboard = new InlineKeyboard();
+
+    if (networks.length === 0) {
+      keyboard.text('No active payment methods', 'noop').row();
+    } else {
+      networks.forEach((net, idx) => {
+        const flag = net.currency === 'PKR' ? '🇵🇰 ' : '🌐 ';
+        keyboard.text(`${flag}${net.name}`, `deposit_${net.id}`);
+        if (idx % 2 === 1) keyboard.row();
+      });
+      if (networks.length % 2 !== 0) keyboard.row();
+    }
+
+    keyboard
+      .text('📜 Deposit History', 'dep_history')
+      .row()
+      .text(t('menu.main', user.preferredLanguage), 'nav_main');
+
+    await ctx.reply(text, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard,
+    });
+  });
+
+  // /orders, /history commands
+  bot.command(['orders', 'history'], async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+
+    const orders = await prisma.order.findMany({
+      where: {
+        userId: user.id,
+        ...(store?.id ? { storeId: store.id } : {}),
+      },
+      include: {
+        items: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+
+    if (orders.length === 0) {
+      const kb = new InlineKeyboard()
+        .text(t('menu.buy', user.preferredLanguage), 'nav_buy')
+        .row()
+        .text(t('menu.main', user.preferredLanguage), 'nav_main');
+
+      await ctx.reply(t('orders.empty', user.preferredLanguage), {
+        reply_markup: kb,
+      });
+      return;
+    }
+
+    const lines = orders.map((o) => {
+      const itemNames = o.items.map((i) => `${i.quantity}x ${i.productNameSnapshot}`).join(', ');
+      return `📦 *#${o.orderNumber}*\n${itemNames}\nTotal: $${Number(o.total).toFixed(2)} | ${o.status}\n${o.createdAt.toISOString().slice(0, 10)}`;
+    });
+
+    const kb = new InlineKeyboard();
+    orders.forEach((o) => {
+      kb.text(`View #${o.orderNumber}`, `order_detail_${o.id}`).row();
+    });
+    kb.text(t('menu.buy', user.preferredLanguage), 'nav_buy')
+      .row()
+      .text(t('menu.main', user.preferredLanguage), 'nav_main');
+
+    await ctx.reply(`📦 *${t('orders.title', user.preferredLanguage)}*\n\n${lines.join('\n\n')}`, {
+      parse_mode: 'Markdown',
+      reply_markup: kb,
+    });
+  });
+
+  // /profile, /account commands
+  bot.command(['profile', 'account'], async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+
+    const [orderCount, referralCount] = await Promise.all([
+      prisma.order.count({ where: { userId: user.id } }),
+      prisma.referral.count({ where: { referrerUserId: user.id } }),
+    ]);
+
+    const customProfile = await getScreenConfig('profile');
+    if (customProfile) {
+      const { text: customText, keyboard: customKb } = renderScreen(customProfile, {
+        storeName,
+        username: user.telegramUsername || user.firstName || 'User',
+        firstName: user.firstName || 'User',
+        telegramId: user.telegramUserId.toString(),
+        balance: Number(user.wallet?.cachedBalance ?? 0).toFixed(2),
+        deposited: Number(user.wallet?.totalDeposited ?? 0).toFixed(2),
+        spent: Number(user.wallet?.totalSpent ?? 0).toFixed(2),
+        orders: orderCount,
+        referrals: referralCount,
+        referralEarnings: Number(user.wallet?.referralEarnings ?? 0).toFixed(2),
+        memberSince: user.createdAt.toISOString().slice(0, 10),
+      });
+      try {
+        await ctx.reply(customText, {
+          reply_markup: customKb,
+          parse_mode: 'Markdown',
+        });
+        return;
+      } catch {
+        await ctx.reply(customText, { reply_markup: customKb });
+        return;
+      }
+    }
+
+    const text = t('profile.title', user.preferredLanguage, {
+      username: user.telegramUsername || user.firstName || 'User',
+      telegramId: user.telegramUserId.toString(),
+      balance: Number(user.wallet?.cachedBalance ?? 0).toFixed(2),
+      deposited: Number(user.wallet?.totalDeposited ?? 0).toFixed(2),
+      spent: Number(user.wallet?.totalSpent ?? 0).toFixed(2),
+      orders: orderCount,
+      referrals: referralCount,
+      referralEarnings: Number(user.wallet?.referralEarnings ?? 0).toFixed(2),
+      memberSince: user.createdAt.toISOString().slice(0, 10),
+    });
+
+    const kb = new InlineKeyboard()
+      .text(t('menu.referral', user.preferredLanguage), 'nav_referral')
+      .row()
+      .text(t('menu.main', user.preferredLanguage), 'nav_main');
+
+    await ctx.reply(text, { reply_markup: kb });
+  });
+
+  // /referral, /invite commands
+  bot.command(['referral', 'invite'], async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+
+    const [referralCount, setting] = await Promise.all([
+      prisma.referral.count({ where: { referrerUserId: user.id } }),
+      prisma.systemSetting.findUnique({ where: { key: 'referral_rate' } }),
+    ]);
+
+    const rate = setting ? Number(setting.value) : 10.0;
+    const botUsername = ctx.me?.username || 'YourStoreBot';
+    const refLink = `https://t.me/${botUsername}?start=ref_${user.telegramUserId}`;
+
+    const text = t('referral.title', user.preferredLanguage, {
+      commissionRate: rate,
+      referralLink: refLink,
+      totalReferrals: referralCount,
+      totalEarnings: Number(user.wallet?.referralEarnings ?? 0).toFixed(2),
+    });
+
+    const kb = new InlineKeyboard().text(t('menu.main', user.preferredLanguage), 'nav_main');
+    await ctx.reply(text, { reply_markup: kb });
+  });
+
+  // /support, /help commands
+  bot.command(['support', 'help'], async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+
+    const customSupport = await getScreenConfig('support');
+    if (customSupport) {
+      const { text: customText, keyboard: customKb } = renderScreen(customSupport, {
+        storeName,
+        username: user.telegramUsername || user.firstName || 'User',
+        firstName: user.firstName || 'User',
+      });
+      try {
+        await ctx.reply(customText, {
+          reply_markup: customKb,
+          parse_mode: 'Markdown',
+        });
+        return;
+      } catch {
+        await ctx.reply(customText, { reply_markup: customKb });
+        return;
+      }
+    }
+
+    const kb = new InlineKeyboard()
+      .text(t('support.order_issue', user.preferredLanguage), 'support_cat_order')
+      .row()
+      .text(t('support.deposit_issue', user.preferredLanguage), 'support_cat_deposit')
+      .row()
+      .text(t('support.warranty', user.preferredLanguage), 'support_cat_warranty')
+      .row()
+      .text(t('support.question', user.preferredLanguage), 'support_cat_general')
+      .row()
+      .text(t('menu.main', user.preferredLanguage), 'nav_main');
+
+    await ctx.reply(`💬 *${t('support.title', user.preferredLanguage)}*\n\nHow can we help you today? Choose an option below:`, {
+      parse_mode: 'Markdown',
+      reply_markup: kb,
+    });
+  });
+
+  // /language, /lang commands
+  bot.command(['language', 'lang'], async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+
+    const kb = new InlineKeyboard()
+      .text('🇬🇧 English', 'lang_en')
+      .text('🇵🇰 اردو (Urdu)', 'lang_ur')
+      .row()
+      .text(t('menu.main', user.preferredLanguage), 'nav_main');
+
+    await ctx.reply(t('language.select', user.preferredLanguage), {
+      reply_markup: kb,
+    });
+  });
+
+  // /cancel command
+  bot.command('cancel', async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+
+    userStates.delete(user.telegramUserId);
+
+    const kb = new InlineKeyboard().text(t('menu.main', user.preferredLanguage), 'nav_main');
+    await ctx.reply('❌ Current operation has been cancelled. Back to main menu:', {
+      reply_markup: kb,
     });
   });
 
