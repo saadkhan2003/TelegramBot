@@ -145,6 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (result.accessToken) {
       localStorage.setItem('admin_token', result.accessToken);
       localStorage.setItem('admin_user', JSON.stringify(result.admin));
+      if (result.store?.id) {
+        localStorage.setItem('active_store_id', result.store.id);
+      }
       setToken(result.accessToken);
       setUser(result.admin);
       router.push('/');
@@ -170,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
+    localStorage.removeItem('active_store_id');
     setUser(null);
     setToken(null);
     router.push('/login');

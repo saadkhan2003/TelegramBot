@@ -221,14 +221,12 @@ export default function LoginPage() {
                 <div className="mt-4 text-[13px] text-[#1b1a19] space-y-2.5">
                   <p>
                     No account?{' '}
-                    <span
-                      onClick={() => {
-                        setError('Staff accounts are provisioned by the Administrator in Team Management.');
-                      }}
-                      className="text-[#0067b8] hover:underline cursor-pointer"
+                    <Link
+                      href="/register"
+                      className="text-[#0067b8] hover:underline cursor-pointer font-medium"
                     >
                       Create one!
-                    </span>
+                    </Link>
                   </p>
                   <p>
                     <button

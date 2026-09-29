@@ -41,8 +41,17 @@ export class AdminAuthGuard implements CanActivate {
         return true;
       }
 
-      // Check if admin is OWNER role or has required permission
-      if (payload.roles && payload.roles.includes('OWNER')) {
+      // Check if admin is OWNER, ADMIN, or SUPER_ADMIN role or has required permission
+      if (
+        payload.roles &&
+        (payload.roles.includes('OWNER') ||
+          payload.roles.includes('ADMIN') ||
+          payload.roles.includes('SUPER_ADMIN'))
+      ) {
+        return true;
+      }
+
+      if (payload.permissions && payload.permissions.includes('*')) {
         return true;
       }
 
@@ -55,7 +64,10 @@ export class AdminAuthGuard implements CanActivate {
       }
 
       return true;
-    } catch {
+    } catch (err) {
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
       throw new UnauthorizedException('Invalid or expired token');
     }
   }

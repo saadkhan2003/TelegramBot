@@ -44,7 +44,7 @@ export class AuthService {
     const existingSlug = await this.prisma.store.findUnique({ where: { slug } });
     if (existingSlug) slug = `${slug}-${Date.now().toString().slice(-5)}`;
 
-    // Create admin + store + StoreMember in one transaction
+    // Create admin + store + StoreMember + AdminRole in one transaction
     const result = await this.prisma.$transaction(async (tx) => {
       const admin = await tx.admin.create({
         data: {
@@ -69,8 +69,43 @@ export class AuthService {
         },
       });
 
+      // Ensure OWNER role exists in the database
+      let ownerRole = await tx.role.findUnique({ where: { slug: 'OWNER' } });
+      if (!ownerRole) {
+        ownerRole = await tx.role.create({
+          data: {
+            name: 'Owner',
+            slug: 'OWNER',
+            description: 'Store Owner with full administrative permissions',
+          },
+        });
+      }
+
+      // Assign OWNER role to the newly registered admin
+      await tx.adminRole.create({
+        data: {
+          adminId: admin.id,
+          roleId: ownerRole.id,
+        },
+      });
+
       return { admin, store };
     });
+
+    // Retrieve all system permissions or supply defaults
+    const allDbPermissions = await this.prisma.permission.findMany({ select: { slug: true } });
+    const permissionSlugs = allDbPermissions.length > 0
+      ? allDbPermissions.map((p) => p.slug)
+      : [
+          'products.view', 'products.edit',
+          'categories.view', 'categories.edit',
+          'orders.view', 'orders.refund',
+          'inventory.view', 'inventory.create', 'inventory.credentials_view',
+          'deposits.view', 'deposits.override',
+          'settings.manage', 'admins.manage',
+          'support.manage', 'wallets.view', 'wallets.adjust',
+          '*',
+        ];
 
     // Issue JWT so user is logged in immediately after signup
     const jwtPayload = {
@@ -78,7 +113,7 @@ export class AuthService {
       email: result.admin.email,
       name: result.admin.name,
       roles: ['OWNER'],
-      permissions: [],
+      permissions: permissionSlugs,
     };
     const token = this.jwtService.sign(jwtPayload);
 
@@ -99,7 +134,7 @@ export class AuthService {
         email: result.admin.email,
         name: result.admin.name,
         roles: ['OWNER'],
-        permissions: [],
+        permissions: permissionSlugs,
       },
       store: {
         id: result.store.id,
@@ -109,7 +144,7 @@ export class AuthService {
   }
 
   async validateAdmin(email: string, pass: string) {
-    const admin = await this.prisma.admin.findUnique({
+    let admin = await this.prisma.admin.findUnique({
       where: { email },
       include: {
         adminRoles: {
@@ -135,18 +170,96 @@ export class AuthService {
       return null;
     }
 
+    // Auto-heal accounts that have no adminRoles assigned yet
+    if (admin.adminRoles.length === 0) {
+      try {
+        let ownerRole = await this.prisma.role.findUnique({ where: { slug: 'OWNER' } });
+        if (!ownerRole) {
+          ownerRole = await this.prisma.role.create({
+            data: {
+              name: 'Owner',
+              slug: 'OWNER',
+              description: 'Store Owner with full administrative permissions',
+            },
+          });
+        }
+        await this.prisma.adminRole.upsert({
+          where: {
+            adminId_roleId: {
+              adminId: admin.id,
+              roleId: ownerRole.id,
+            },
+          },
+          update: {},
+          create: {
+            adminId: admin.id,
+            roleId: ownerRole.id,
+          },
+        });
+
+        const refreshed = await this.prisma.admin.findUnique({
+          where: { id: admin.id },
+          include: {
+            adminRoles: {
+              include: {
+                role: {
+                  include: {
+                    rolePermissions: {
+                      include: { permission: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+        if (refreshed) admin = refreshed;
+      } catch (err) {
+        // Continue even if concurrent update occurred
+      }
+    }
+
     const permissions = new Set<string>();
+    const roles = admin.adminRoles.map((ar) => ar.role.slug);
+
     admin.adminRoles.forEach((ar) => {
       ar.role.rolePermissions.forEach((rp) => {
         permissions.add(rp.permission.slug);
       });
     });
 
+    // If the admin is OWNER, ADMIN, or SUPER_ADMIN, grant full permissions
+    if (
+      roles.includes('OWNER') ||
+      roles.includes('ADMIN') ||
+      roles.includes('SUPER_ADMIN') ||
+      roles.length === 0
+    ) {
+      const allPerms = await this.prisma.permission.findMany({ select: { slug: true } });
+      if (allPerms.length > 0) {
+        allPerms.forEach((p) => permissions.add(p.slug));
+      } else {
+        [
+          'products.view', 'products.edit',
+          'categories.view', 'categories.edit',
+          'orders.view', 'orders.refund',
+          'inventory.view', 'inventory.create', 'inventory.credentials_view',
+          'deposits.view', 'deposits.override',
+          'settings.manage', 'admins.manage',
+          'support.manage', 'wallets.view', 'wallets.adjust',
+          '*',
+        ].forEach((p) => permissions.add(p));
+      }
+      if (!roles.includes('OWNER') && roles.length === 0) {
+        roles.push('OWNER');
+      }
+    }
+
     return {
       id: admin.id,
       email: admin.email,
       name: admin.name || admin.email.split('@')[0],
-      roles: admin.adminRoles.map((ar) => ar.role.slug),
+      roles,
       permissions: Array.from(permissions),
     };
   }
@@ -191,7 +304,7 @@ export class AuthService {
   }
 
   async getProfile(adminId: string) {
-    const admin = await this.prisma.admin.findUnique({
+    let admin = await this.prisma.admin.findUnique({
       where: { id: adminId },
       include: {
         adminRoles: {
@@ -212,18 +325,96 @@ export class AuthService {
       throw new UnauthorizedException('Admin not found');
     }
 
+    // Auto-heal accounts that have no adminRoles assigned yet
+    if (admin.adminRoles.length === 0) {
+      try {
+        let ownerRole = await this.prisma.role.findUnique({ where: { slug: 'OWNER' } });
+        if (!ownerRole) {
+          ownerRole = await this.prisma.role.create({
+            data: {
+              name: 'Owner',
+              slug: 'OWNER',
+              description: 'Store Owner with full administrative permissions',
+            },
+          });
+        }
+        await this.prisma.adminRole.upsert({
+          where: {
+            adminId_roleId: {
+              adminId: admin.id,
+              roleId: ownerRole.id,
+            },
+          },
+          update: {},
+          create: {
+            adminId: admin.id,
+            roleId: ownerRole.id,
+          },
+        });
+
+        const refreshed = await this.prisma.admin.findUnique({
+          where: { id: admin.id },
+          include: {
+            adminRoles: {
+              include: {
+                role: {
+                  include: {
+                    rolePermissions: {
+                      include: { permission: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+        if (refreshed) admin = refreshed;
+      } catch (err) {
+        // Continue even if concurrent update occurred
+      }
+    }
+
     const permissions = new Set<string>();
+    const roles = admin.adminRoles.map((ar) => ar.role.slug);
+
     admin.adminRoles.forEach((ar) => {
       ar.role.rolePermissions.forEach((rp) => {
         permissions.add(rp.permission.slug);
       });
     });
 
+    // If the admin is OWNER, ADMIN, or SUPER_ADMIN, grant full permissions
+    if (
+      roles.includes('OWNER') ||
+      roles.includes('ADMIN') ||
+      roles.includes('SUPER_ADMIN') ||
+      roles.length === 0
+    ) {
+      const allPerms = await this.prisma.permission.findMany({ select: { slug: true } });
+      if (allPerms.length > 0) {
+        allPerms.forEach((p) => permissions.add(p.slug));
+      } else {
+        [
+          'products.view', 'products.edit',
+          'categories.view', 'categories.edit',
+          'orders.view', 'orders.refund',
+          'inventory.view', 'inventory.create', 'inventory.credentials_view',
+          'deposits.view', 'deposits.override',
+          'settings.manage', 'admins.manage',
+          'support.manage', 'wallets.view', 'wallets.adjust',
+          '*',
+        ].forEach((p) => permissions.add(p));
+      }
+      if (!roles.includes('OWNER') && roles.length === 0) {
+        roles.push('OWNER');
+      }
+    }
+
     return {
       id: admin.id,
       email: admin.email,
       name: admin.name || admin.email.split('@')[0],
-      roles: admin.adminRoles.map((ar) => ar.role.slug),
+      roles,
       permissions: Array.from(permissions),
       createdAt: admin.createdAt,
     };
