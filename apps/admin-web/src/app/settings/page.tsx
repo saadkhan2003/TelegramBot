@@ -539,8 +539,8 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Tabs Navigation Bar */}
-      <div className="flex flex-wrap gap-1.5 border-b border-[#edebe9] pb-2">
+      {/* Tabs Navigation Bar - horizontally scrollable on mobile */}
+      <div className="flex gap-1.5 border-b border-[#edebe9] pb-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
         {tabs.map((t) => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;
@@ -548,14 +548,15 @@ export default function SettingsPage() {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as any)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-[4px] text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-[4px] text-xs font-medium transition-all shrink-0 whitespace-nowrap ${
                 isActive
                   ? 'bg-[#eff6fc] text-[#0078d4] border border-[#c7e0f4] font-semibold shadow-xs'
                   : 'text-[#605e5c] hover:text-[#201f1e] hover:bg-[#faf9f8]'
               }`}
             >
-              <Icon className={`h-4 w-4 ${isActive ? 'text-[#0078d4]' : 'text-[#8a8886]'}`} />
-              <span>{t.label}</span>
+              <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-[#0078d4]' : 'text-[#8a8886]'}`} />
+              <span className="hidden sm:inline">{t.label}</span>
+              <span className="sm:hidden">{t.label.split(' ')[0]}</span>
             </button>
           );
         })}

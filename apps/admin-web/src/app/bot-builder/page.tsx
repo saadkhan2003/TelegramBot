@@ -15,6 +15,7 @@ import {
   X,
   Layers,
   ChevronDown,
+  ChevronUp,
   ArrowLeft,
   LayoutGrid,
   Sliders,
@@ -560,11 +561,11 @@ export default function BotBuilderPage() {
   };
 
   return (
-    <div className="-m-3.5 sm:-m-6 lg:-m-8 h-[calc(100vh-4rem)] flex flex-col bg-[#f8f9fa] overflow-hidden select-none font-sans">
+    <div className="-m-3.5 sm:-m-6 lg:-m-8 h-[calc(100vh-4rem-64px)] lg:h-[calc(100vh-4rem)] flex flex-col bg-[#f8f9fa] overflow-hidden select-none font-sans">
       {/* Elementor-Style Studio Top Bar */}
-      <header className="bg-white border-b border-[#edebe9] px-4 py-2 flex items-center justify-between shrink-0 z-30 shadow-xs">
+      <header className="bg-white border-b border-[#edebe9] px-3 py-1.5 flex items-center gap-2 overflow-x-auto shrink-0 z-30 shadow-xs" style={{ scrollbarWidth: 'none' }}>
         {/* Left: Screen Selector Dropdown + Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Active Screen Dropdown Trigger */}
           <div className="relative" ref={dropdownRef}>
             <button
@@ -663,7 +664,7 @@ export default function BotBuilderPage() {
           <button
             type="button"
             onClick={() => setIsNewScreenModalOpen(true)}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded bg-white hover:bg-[#f3f2f1] text-[#0078d4] border border-[#c7e0f4] text-xs font-bold transition cursor-pointer shadow-2xs"
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded bg-white hover:bg-[#f3f2f1] text-[#0078d4] border border-[#c7e0f4] text-xs font-bold transition cursor-pointer shadow-2xs shrink-0 whitespace-nowrap"
           >
             <Plus className="h-3.5 w-3.5" />
             <span>New Screen</span>
@@ -672,7 +673,7 @@ export default function BotBuilderPage() {
           <button
             type="button"
             onClick={() => setIsTemplatesModalOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#d2d0ce] text-xs font-medium transition cursor-pointer shadow-2xs"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#d2d0ce] text-xs font-medium transition cursor-pointer shadow-2xs shrink-0 whitespace-nowrap"
           >
             <BookOpen className="h-3.5 w-3.5 text-[#605e5c]" />
             <span>Templates</span>
@@ -682,25 +683,25 @@ export default function BotBuilderPage() {
           <button
             type="button"
             onClick={toggleSidebarCollapse}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#d2d0ce] text-xs font-medium transition cursor-pointer shadow-2xs"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#d2d0ce] text-xs font-medium transition cursor-pointer shadow-2xs shrink-0 whitespace-nowrap"
             title={isSidebarCollapsed ? "Expand navigation sidebar (Ctrl+B)" : "Collapse navigation sidebar for maximum width (Ctrl+B)"}
           >
             {isSidebarCollapsed ? (
               <>
                 <PanelLeftOpen className="h-3.5 w-3.5 text-[#0078d4]" />
-                <span className="hidden md:inline font-bold text-[#0078d4]">Expand Menu</span>
+                <span className="hidden lg:inline font-bold text-[#0078d4]">Expand</span>
               </>
             ) : (
               <>
                 <PanelLeftClose className="h-3.5 w-3.5 text-[#605e5c]" />
-                <span className="hidden md:inline">Collapse Menu</span>
+                <span className="hidden lg:inline">Collapse</span>
               </>
             )}
           </button>
 
 
           {/* View Mode Switcher: Studio Canvas vs ManyChat Flow Blueprint */}
-          <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-md border border-[#d2d0ce] ml-1">
+          <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-md border border-[#d2d0ce] shrink-0">
             <button
               type="button"
               onClick={() => setViewMode('studio')}
@@ -738,11 +739,11 @@ export default function BotBuilderPage() {
               setTriggerEvent(activeScreen.triggers?.event || 'none');
               setIsTriggersModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-white hover:bg-[#fff9e6] text-[#b25e00] border border-[#f9df99] text-xs font-bold transition cursor-pointer shadow-2xs"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-white hover:bg-[#fff9e6] text-[#b25e00] border border-[#f9df99] text-xs font-bold transition cursor-pointer shadow-2xs shrink-0 whitespace-nowrap"
             title="Configure Keyword Triggers, Slash Commands, and Lifecycle Sequences"
           >
             <Zap className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-            <span className="hidden sm:inline">Triggers</span>
+            <span>Triggers</span>
             {(activeScreen.triggers?.keywords?.length || 0) > 0 && (
               <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded-full font-mono font-bold">
                 {activeScreen.triggers?.keywords?.length}
@@ -754,7 +755,7 @@ export default function BotBuilderPage() {
           <button
             type="button"
             onClick={() => setShowHeatmap((prev) => !prev)}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold transition cursor-pointer border shadow-2xs ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold transition cursor-pointer border shadow-2xs shrink-0 whitespace-nowrap ${
               showHeatmap
                 ? 'bg-amber-500 text-black border-amber-600'
                 : 'bg-white hover:bg-[#f3f2f1] text-[#323130] border-[#d2d0ce]'
@@ -762,12 +763,12 @@ export default function BotBuilderPage() {
             title="Toggle live button click counts and CTR heatmaps"
           >
             <Flame className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Heatmap</span>
+            <span>Heatmap</span>
           </button>
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           {isDirty && (
             <span className="hidden md:flex items-center gap-1.5 text-[11px] text-[#d83b01] font-semibold bg-[#fdf3f2] px-2.5 py-1 rounded border border-[#fad8d6]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#d83b01] animate-pulse" />
@@ -779,18 +780,18 @@ export default function BotBuilderPage() {
             type="button"
             onClick={handleResetToDefault}
             disabled={isSaving}
-            className="px-2.5 py-1.5 rounded border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#323130] text-xs font-medium transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
+            className="px-2.5 py-1.5 rounded border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#323130] text-xs font-medium transition cursor-pointer flex items-center gap-1 disabled:opacity-50 shrink-0 whitespace-nowrap"
             title="Reset to default preset"
           >
             <RotateCcw className="h-3.5 w-3.5 text-[#605e5c]" />
-            <span className="hidden sm:inline">Reset</span>
+            <span>Reset</span>
           </button>
 
           <button
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-1.5 rounded bg-[#0078d4] hover:bg-[#106ebe] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+            className="px-4 py-1.5 rounded bg-[#0078d4] hover:bg-[#106ebe] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50 shrink-0 whitespace-nowrap"
           >
             {isSaving ? (
               <>
@@ -928,13 +929,13 @@ export default function BotBuilderPage() {
         </div>
       ) : (
         /* 2-Zone Spacious Studio (Elementor Architecture: Left Tool Panel + Spacious Workspace) */
-        <div className="flex-1 flex overflow-hidden min-h-0 relative">
-          {/* Floating Re-open Button when Left Studio Panel is collapsed */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 relative">
+          {/* Floating Re-open Button when Left Studio Panel is collapsed (desktop only) */}
           {isStudioPanelCollapsed && (
             <button
               type="button"
               onClick={() => setIsStudioPanelCollapsed(false)}
-              className="absolute left-3 top-3 z-30 flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#eff6fc] text-[#0078d4] font-bold text-xs rounded-lg shadow-md border border-[#c7e0f4] cursor-pointer transition animate-in fade-in"
+              className="hidden md:flex absolute left-3 top-3 z-30 items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#eff6fc] text-[#0078d4] font-bold text-xs rounded-lg shadow-md border border-[#c7e0f4] cursor-pointer transition animate-in fade-in"
               title="Open elements & tools panel"
             >
               <PanelLeftOpen className="h-4 w-4" />
@@ -942,12 +943,24 @@ export default function BotBuilderPage() {
             </button>
           )}
 
-          {/* Zone 1: Unified Left Studio Panel holding Elements & Inspector */}
+          {/* Mobile: tap bar to re-open elements panel when collapsed */}
+          {isStudioPanelCollapsed && (
+            <button
+              type="button"
+              onClick={() => setIsStudioPanelCollapsed(false)}
+              className="md:hidden w-full shrink-0 flex items-center justify-center gap-2 py-2 bg-white border-b border-[#edebe9] text-[#0078d4] text-xs font-bold cursor-pointer"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+              <span>Show Elements &amp; Inspector</span>
+            </button>
+          )}
+
+          {/* Zone 1: Unified Left Studio Panel */}
           <aside
-            className={`bg-white border-r border-[#edebe9] flex flex-col h-full shrink-0 shadow-xs z-20 transition-all duration-300 ease-in-out ${
+            className={`bg-white border-b md:border-b-0 md:border-r border-[#edebe9] flex flex-col shrink-0 shadow-xs z-20 transition-all duration-300 ease-in-out ${
               isStudioPanelCollapsed
-                ? 'w-0 opacity-0 pointer-events-none border-r-0 overflow-hidden'
-                : 'w-80 sm:w-[340px] opacity-100'
+                ? 'h-0 md:w-0 opacity-0 pointer-events-none overflow-hidden'
+                : 'h-[45vh] md:h-full w-full md:w-80 lg:w-[340px] opacity-100'
             }`}
           >
             {/* Sub-tabs header: [+ Elements] vs [⚙ Edit Block] */}
@@ -985,7 +998,8 @@ export default function BotBuilderPage() {
                 className="p-1 rounded text-[#605e5c] hover:text-[#201f1e] hover:bg-[#edebe9] transition cursor-pointer ml-0.5"
                 title="Collapse studio panel"
               >
-                <PanelLeftClose className="h-4 w-4" />
+                <PanelLeftClose className="hidden md:block h-4 w-4" />
+                <ChevronUp className="md:hidden h-4 w-4" />
               </button>
             </div>
 
@@ -1020,7 +1034,7 @@ export default function BotBuilderPage() {
           </aside>
 
           {/* Zone 2: Spacious Main Workspace (Flex-1) */}
-          <main className="flex-1 flex flex-col h-full bg-[#f0f2f5] overflow-hidden min-w-0">
+          <main className="flex-1 flex flex-col min-h-0 bg-[#f0f2f5] overflow-hidden">
             <Canvas
               components={activeComponents}
               selectedId={selectedComponentId}
