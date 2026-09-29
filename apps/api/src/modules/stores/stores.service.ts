@@ -211,4 +211,21 @@ export class StoresService {
       return { ok: false, error: `Connection failed: ${err.message}` };
     }
   }
+
+  async deleteStore(storeId: string, adminId: string) {
+    const store = await this.prisma.store.findUnique({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Store not found');
+    if (store.ownerId !== adminId) {
+      throw new ForbiddenException('Only the store owner can delete this store');
+    }
+    // Prevent deleting the last store owned by this admin
+    const ownedCount = await this.prisma.store.count({ where: { ownerId: adminId } });
+    if (ownedCount <= 1) {
+      throw new BadRequestException(
+        'You cannot delete your only store. Create another store first.',
+      );
+    }
+    await this.prisma.store.delete({ where: { id: storeId } });
+    return { success: true, message: `Store "${store.name}" has been permanently deleted.` };
+  }
 }

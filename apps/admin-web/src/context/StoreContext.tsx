@@ -39,6 +39,7 @@ interface StoreContextType {
     botToken?: string;
     tagline?: string;
   }) => Promise<Store>;
+  deleteStore: (storeId: string) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType>({
@@ -48,6 +49,7 @@ const StoreContext = createContext<StoreContextType>({
   setActiveStore: () => {},
   refreshStores: async () => {},
   createStore: async () => ({} as any),
+  deleteStore: async () => {},
 });
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -116,6 +118,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return newStore;
   };
 
+  const deleteStore = async (storeId: string) => {
+    await fetchApi(`/admin/stores/${storeId}`, { method: 'DELETE' });
+    // If deleting the active store, switch to another
+    if (activeStore?.id === storeId) {
+      if (typeof window !== 'undefined') localStorage.removeItem('active_store_id');
+    }
+    await refreshStores();
+  };
+
   return (
     <StoreContext.Provider
       value={{
@@ -125,6 +136,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setActiveStore,
         refreshStores,
         createStore,
+        deleteStore,
       }}
     >
       {children}

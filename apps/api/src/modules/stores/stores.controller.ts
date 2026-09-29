@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -64,5 +65,10 @@ export class StoresController {
     @Req() req: any,
   ) {
     return this.storesService.updateStore(id, body, req.admin.sub);
+  }
+
+  @Delete(':id')
+  async deleteStore(@Param('id') id: string, @Req() req: any) {
+    return this.storesService.deleteStore(id, req.admin.sub);
   }
 }

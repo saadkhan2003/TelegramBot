@@ -9,19 +9,24 @@ import {
   Check,
   Plus,
   Bot,
-  ExternalLink,
   Loader2,
   X,
-  Sparkles,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
 export default function StoreSwitcher() {
-  const { stores, activeStore, setActiveStore, createStore, loading } = useStore();
+  const { stores, activeStore, setActiveStore, createStore, deleteStore, loading } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<Store | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -69,6 +74,21 @@ export default function StoreSwitcher() {
       alert(`Failed to create store: ${err.message}`);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteStore(deleteTarget.id);
+      setDeleteTarget(null);
+      setIsOpen(false);
+    } catch (err: any) {
+      setDeleteError(err.message || 'Failed to delete store');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -120,34 +140,51 @@ export default function StoreSwitcher() {
       {isOpen && (
         <div className="absolute left-0 top-full mt-1.5 w-72 bg-white border border-[#edebe9] rounded-[6px] shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100">
           <div className="px-3 py-1.5 text-[10px] font-bold text-[#8a8886] uppercase tracking-wider border-b border-[#f3f2f1]">
-            Your Store & Bot Fleet ({stores.length})
+            Your Store &amp; Bot Fleet ({stores.length})
           </div>
 
           <div className="max-h-60 overflow-y-auto py-1">
             {stores.map((s) => {
               const isActive = activeStore?.id === s.id;
               return (
-                <button
-                  key={s.id}
-                  onClick={() => handleSelectStore(s)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-xs transition text-left ${
-                    isActive ? 'bg-[#eff6fc] text-[#0078d4]' : 'hover:bg-[#faf9f8] text-[#201f1e]'
-                  }`}
-                >
-                  <div className="min-w-0 flex-1 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-semibold truncate">{s.name}</span>
-                      <span className="text-[9px] px-1 bg-[#f3f2f1] text-[#605e5c] rounded">
-                        {s.currency}
-                      </span>
+                <div key={s.id} className="group/row relative flex items-center">
+                  <button
+                    onClick={() => handleSelectStore(s)}
+                    className={`flex-1 flex items-center justify-between px-3 py-2 text-xs transition text-left ${
+                      isActive ? 'bg-[#eff6fc] text-[#0078d4]' : 'hover:bg-[#faf9f8] text-[#201f1e]'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1 pr-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold truncate">{s.name}</span>
+                        <span className="text-[9px] px-1 bg-[#f3f2f1] text-[#605e5c] rounded">
+                          {s.currency}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[#605e5c] truncate flex items-center gap-1 mt-0.5">
+                        <Bot className="h-3 w-3 text-[#8a8886]" />
+                        <span>{s.botUsername ? `@${s.botUsername}` : s.hasBotToken ? 'Connected' : 'No bot'}</span>
+                      </p>
                     </div>
-                    <p className="text-[10px] text-[#605e5c] truncate flex items-center gap-1 mt-0.5">
-                      <Bot className="h-3 w-3 text-[#8a8886]" />
-                      <span>{s.botUsername ? `@${s.botUsername}` : s.hasBotToken ? 'Connected' : 'No bot'}</span>
-                    </p>
-                  </div>
-                  {isActive && <Check className="h-4 w-4 text-[#0078d4] shrink-0" />}
-                </button>
+                    {isActive && <Check className="h-4 w-4 text-[#0078d4] shrink-0" />}
+                  </button>
+
+                  {/* Delete button — only visible on hover, only for non-active stores */}
+                  {!isActive && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteError('');
+                        setDeleteTarget(s);
+                        setIsOpen(false);
+                      }}
+                      title={`Delete "${s.name}"`}
+                      className="absolute right-2 opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-[#fde7e9] text-[#8a8886] hover:text-[#d13438]"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -168,7 +205,67 @@ export default function StoreSwitcher() {
         </div>
       )}
 
-      {/* Create New Store Modal — Portaled to document.body so it is never trapped inside transformed sidebar */}
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteTarget && mounted && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => !deleting && setDeleteTarget(null)}
+        >
+          <div
+            className="bg-white border border-[#edebe9] rounded-lg p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-150 text-[#1b1a19]"
+            onClick={(e) => e.stopPropagation()}
+            style={{ fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif' }}
+          >
+            {/* Header */}
+            <div className="flex items-start gap-3 mb-4">
+              <div className="h-9 w-9 rounded-full bg-[#fde7e9] border border-[#f9a8ad] flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-4.5 w-4.5 text-[#d13438]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#1b1a19]">Delete Store?</h3>
+                <p className="text-xs text-[#605e5c] mt-0.5 leading-relaxed">
+                  Permanently delete{' '}
+                  <span className="font-semibold text-[#1b1a19]">"{deleteTarget.name}"</span>?
+                  This will remove all products, orders, settings, and bot config for this store.
+                  <span className="block mt-1 font-semibold text-[#d13438]">This cannot be undone.</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Error */}
+            {deleteError && (
+              <div className="mb-3 p-2.5 rounded-[4px] bg-[#fdf2f2] border border-[#f9a8ad] text-xs text-[#a4262c] flex items-start gap-2">
+                <X className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setDeleteTarget(null)}
+                className="px-3 py-1.5 rounded-[4px] border border-[#d2d0ce] hover:bg-[#f3f2f1] text-xs text-[#605e5c] font-medium transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDeleteConfirm}
+                className="px-4 py-1.5 rounded-[4px] bg-[#d13438] hover:bg-[#a4262c] text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                <span>{deleting ? 'Deleting…' : 'Delete Store'}</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Create New Store Modal ── */}
       {showCreateModal && mounted && createPortal(
         <div
           className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
