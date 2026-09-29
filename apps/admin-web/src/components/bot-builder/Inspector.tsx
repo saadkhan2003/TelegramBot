@@ -1,13 +1,27 @@
 'use client';
 
-import React from 'react';
-import { Trash2, Plus, X, ExternalLink, Zap, ArrowRight, CornerDownRight } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Trash2,
+  Plus,
+  X,
+  ExternalLink,
+  Zap,
+  ArrowRight,
+  CornerDownRight,
+  Search,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Check,
+} from 'lucide-react';
 import {
   BotComponent,
   BotButton,
   ButtonType,
   BOT_ACTIONS,
   TEMPLATE_VARIABLES,
+  VARIABLE_CATEGORIES,
   uid,
 } from '../../lib/botBuilderTypes';
 
@@ -22,6 +36,193 @@ const inputClass =
   'w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] px-2.5 py-1.5 text-xs text-[#1b1a19] focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4] transition';
 
 const labelClass = 'block text-[10px] font-bold text-[#605e5c] uppercase tracking-wide mb-1';
+
+function CategorizedVarPicker({
+  field,
+  currentValue,
+  onInsert,
+}: {
+  field: string;
+  currentValue: string;
+  onInsert: (newVal: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedCat, setSelectedCat] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const filteredVars = TEMPLATE_VARIABLES.filter((v) => {
+    const matchesCategory = selectedCat === 'all' || v.category === selectedCat;
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      v.key.toLowerCase().includes(q) ||
+      v.desc.toLowerCase().includes(q) ||
+      v.category.toLowerCase().includes(q);
+    return matchesCategory && matchesSearch;
+  });
+
+  const handleSelect = (key: string) => {
+    onInsert((currentValue || '') + `{${key}}`);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1200);
+  };
+
+  const topPicks = ['username', 'firstName', 'balance', 'storeName', 'orderNumber', 'vps.ip', 'license.key'];
+
+  return (
+    <div className="mt-2.5 rounded-lg border border-[#e1dfdd] bg-[#fdfdfd] p-2.5 transition">
+      {/* Header and Toggle */}
+      <div className="flex items-center justify-between gap-1 mb-2">
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#323130] uppercase tracking-wider">
+          <Sparkles className="h-3 w-3 text-[#0078d4]" />
+          <span>Dynamic Variables</span>
+          <span className="text-[9px] font-semibold text-[#0078d4] bg-[#eff6fc] px-1.5 py-0.2 rounded-full border border-[#c7e0f4]">
+            {TEMPLATE_VARIABLES.length}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="text-[10px] font-semibold text-[#0078d4] hover:text-[#005a9e] flex items-center gap-1 transition cursor-pointer"
+        >
+          {isOpen ? (
+            <>
+              Collapse Library <ChevronUp className="h-3 w-3" />
+            </>
+          ) : (
+            <>
+              Explore All Categories <ChevronDown className="h-3 w-3" />
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Quick Access Badges */}
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="text-[9px] text-[#8a8886] font-medium mr-0.5">Quick:</span>
+        {topPicks.map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => handleSelect(k)}
+            title={`Insert {${k}}`}
+            className={`text-[9px] px-1.5 py-0.5 rounded font-mono border transition cursor-pointer flex items-center gap-1 ${
+              copiedKey === k
+                ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-bold'
+                : 'bg-white border-[#d2d0ce] text-[#201f1e] hover:bg-[#eff6fc] hover:border-[#0078d4] hover:text-[#0078d4]'
+            }`}
+          >
+            {copiedKey === k ? <Check className="h-2.5 w-2.5 text-emerald-600" /> : null}
+            <span>{`{${k}}`}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Expanded Categorized Library */}
+      {isOpen && (
+        <div className="mt-2.5 pt-2 border-t border-[#edebe9] space-y-2">
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 text-[#8a8886] absolute left-2 top-2" />
+            <input
+              type="text"
+              placeholder="Search variables (e.g. btc, ram, ip, order)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-[#d2d0ce] rounded-[4px] pl-7 pr-2 py-1 text-xs text-[#201f1e] placeholder-[#a19f9d] focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4]"
+            />
+          </div>
+
+          {/* Category Tabs */}
+          <div className="flex gap-1 overflow-x-auto pb-1 text-[10px] no-scrollbar">
+            {VARIABLE_CATEGORIES.map((cat) => {
+              const isSelected = selectedCat === cat.id;
+              const count =
+                cat.id === 'all'
+                  ? TEMPLATE_VARIABLES.length
+                  : TEMPLATE_VARIABLES.filter((v) => v.category === cat.id).length;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCat(cat.id)}
+                  className={`px-2 py-1 rounded-full shrink-0 font-medium transition cursor-pointer flex items-center gap-1 border ${
+                    isSelected
+                      ? 'bg-[#0078d4] border-[#0078d4] text-white shadow-2xs font-semibold'
+                      : 'bg-white border-[#e1dfdd] text-[#605e5c] hover:bg-[#f3f2f1]'
+                  }`}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.name}</span>
+                  <span
+                    className={`text-[8px] px-1 rounded-full ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-[#edebe9] text-[#605e5c]'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Variables List Card Container */}
+          <div className="max-h-52 overflow-y-auto space-y-1 pr-1 divide-y divide-[#edebe9]">
+            {filteredVars.length === 0 ? (
+              <div className="text-[11px] text-[#8a8886] text-center py-4 italic">
+                No variables found matching &quot;{searchQuery}&quot;
+              </div>
+            ) : (
+              filteredVars.map((v) => (
+                <div
+                  key={v.key}
+                  onClick={() => handleSelect(v.key)}
+                  className="pt-1.5 first:pt-0 flex items-center justify-between gap-2 p-1.5 rounded hover:bg-[#eff6fc] transition cursor-pointer group"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[10px] font-bold text-[#0078d4] group-hover:underline">
+                        {`{${v.key}}`}
+                      </span>
+                      <span className="text-[9px] text-[#8a8886]">{v.categoryIcon}</span>
+                    </div>
+                    <div className="text-[10px] text-[#605e5c] truncate mt-0.5">
+                      {v.desc}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    <span
+                      className="text-[9px] bg-[#f3f2f1] text-[#323130] px-1.5 py-0.5 rounded font-mono truncate max-w-[110px]"
+                      title={`Example output: ${v.example}`}
+                    >
+                      {v.example}
+                    </span>
+                    <span
+                      className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${
+                        copiedKey === v.key
+                          ? 'bg-emerald-500 text-white'
+                          : 'text-[#0078d4] bg-white border border-[#c7e0f4] group-hover:bg-[#0078d4] group-hover:text-white'
+                      }`}
+                    >
+                      {copiedKey === v.key ? '✓ Added' : '+ Insert'}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="text-[9px] text-[#8a8886] flex items-center justify-between px-1 pt-1 border-t border-[#edebe9]">
+            <span>Showing {filteredVars.length} variables</span>
+            <span className="text-[#0078d4]">Click any to insert</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Inspector({
   component,
@@ -46,25 +247,11 @@ export default function Inspector({
   const update = (patch: Partial<BotComponent>) => onChange({ ...component, ...patch });
 
   const VarChips = ({ field }: { field: keyof BotComponent }) => (
-    <div className="mt-2">
-      <div className="text-[9px] font-bold text-[#8a8886] uppercase tracking-wider mb-1">Insert Variable:</div>
-      <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
-        {TEMPLATE_VARIABLES.slice(0, 10).map((v) => (
-          <button
-            key={v.key}
-            type="button"
-            title={v.desc}
-            onClick={() => {
-              const current = (component[field] as string) || '';
-              update({ [field]: current + `{${v.key}}` } as any);
-            }}
-            className="text-[9px] px-1.5 py-0.5 bg-[#eff6fc] text-[#0078d4] rounded border border-[#c7e0f4] hover:bg-[#ddeeff] transition cursor-pointer font-mono"
-          >
-            {`{${v.key}}`}
-          </button>
-        ))}
-      </div>
-    </div>
+    <CategorizedVarPicker
+      field={String(field)}
+      currentValue={(component[field] as string) || ''}
+      onInsert={(newVal) => update({ [field]: newVal } as any)}
+    />
   );
 
   return (

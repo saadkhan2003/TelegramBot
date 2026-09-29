@@ -169,35 +169,76 @@ export async function getAllScreens(): Promise<Array<{ key: string; components: 
 }
 
 export async function buildScreenVariables(user: any, storeName: string): Promise<Record<string, string | number>> {
-  const [orderCount, referralCount, openTicketsCount, inStockCount] = await Promise.all([
+  const [orderCount, referralCount, openTicketsCount, inStockCount, rateSetting] = await Promise.all([
     prisma.order.count({ where: { userId: user.id } }).catch(() => 0),
     prisma.referral.count({ where: { referrerUserId: user.id } }).catch(() => 0),
     prisma.supportTicket.count({ where: { status: 'OPEN' } }).catch(() => 0),
     prisma.product.count({ where: { status: ProductStatus.ACTIVE } }).catch(() => 14),
+    prisma.systemSetting.findUnique({ where: { key: 'usd_to_pkr_rate' } }).catch(() => null),
   ]);
 
+  const pkrRate = rateSetting ? Number(rateSetting.value) || 280 : 280;
   const balance = Number(user.wallet?.cachedBalance ?? 0);
   const deposited = Number(user.wallet?.totalDeposited ?? 0);
   const spent = Number(user.wallet?.totalSpent ?? 0);
+  const referralEarnings = Number(user.wallet?.referralEarnings ?? 0);
+
+  const balancePkr = (balance * pkrRate).toLocaleString('en-US', { maximumFractionDigits: 0 });
 
   return {
     storeName,
+    storeTagline: 'Premier Cloud & Digital Services',
+    operationalHours: '24/7 Automated',
     username: user.telegramUsername || user.firstName || 'User',
     firstName: user.firstName || 'User',
     lastName: user.lastName || '',
     telegramId: user.telegramUserId.toString(),
     balance: balance.toFixed(2),
+    balancePkr,
+    currency: 'USD',
+    currencySymbol: '$',
     deposited: deposited.toFixed(2),
     spent: spent.toFixed(2),
+    referralEarnings: referralEarnings.toFixed(2),
+    minDeposit: '$1.00',
+    exchangeRate: String(pkrRate),
     orders: orderCount,
     referrals: referralCount,
-    vip: balance >= 100 || orderCount >= 5 ? 1 : 0,
+    vipTier: balance >= 200 ? 'Platinum VIP' : balance >= 50 ? 'Gold VIP' : 'Standard Member',
+    isVip: balance >= 50 || orderCount >= 5 ? 1 : 0,
+    vip: balance >= 50 || orderCount >= 5 ? 1 : 0,
+    language: user.preferredLanguage || 'en',
     memberSince: user.createdAt ? new Date(user.createdAt).toISOString().slice(0, 10) : '2026-01-01',
     // Dynamic database live variables
     'crypto.btc_rate': '68,450',
+    'crypto.eth_rate': '3,520',
     'crypto.ton_rate': '5.20',
+    'crypto.usdt_rate': '1.00',
+    'fx.usd_to_pkr': String(pkrRate),
     'inventory.in_stock_count': inStockCount,
+    'inventory.total_products': 14,
+    'inventory.stock': inStockCount,
     'support.open_tickets': openTicketsCount,
+    ticketNumber: 'TCK-LIVE',
+    // VPS & Hosting live placeholders
+    'vps.ip': '185.192.110.42',
+    'vps.os': 'Ubuntu 24.04 LTS',
+    'vps.ram': '8GB DDR5 ECC',
+    'vps.cpu': '4 vCPU (AMD EPYC)',
+    'vps.bandwidth': '10TB Unmetered',
+    'vps.location': 'Frankfurt, Germany',
+    'vps.status': 'RUNNING',
+    'vps.expiryDate': '2026-10-29',
+    // License & AI placeholders
+    'license.key': 'ACTIVE-LICENSE-KEY',
+    'license.plan': 'Enterprise Tier',
+    'license.expiry': '2027-01-01',
+    'license.devices': '3 Devices',
+    'api.quota_left': '500,000 credits',
+    // System & Dates
+    'date.today': new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    'time.now': new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC',
+    year: new Date().getFullYear(),
   };
 }
 

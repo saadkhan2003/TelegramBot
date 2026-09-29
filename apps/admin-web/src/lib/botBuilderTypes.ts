@@ -188,41 +188,109 @@ export const BOT_ACTIONS = [
   { value: 'support_question', label: '❓ General Question' },
 ];
 
-export const TEMPLATE_VARIABLES = [
-  // User Profile
-  { key: 'username', desc: 'Telegram @username' },
-  { key: 'firstName', desc: "User's first name" },
-  { key: 'lastName', desc: "User's last name" },
-  { key: 'telegramId', desc: "User's Telegram ID" },
-  { key: 'balance', desc: 'Wallet balance ($)' },
-  { key: 'deposited', desc: 'Total deposited ($)' },
-  { key: 'spent', desc: 'Total spent ($)' },
-  { key: 'orders', desc: 'Total orders count' },
-  { key: 'referrals', desc: 'Total invited users' },
-  { key: 'memberSince', desc: 'Account registration date' },
+export interface TemplateVariable {
+  key: string;
+  desc: string;
+  category: string;
+  categoryIcon: string;
+  example: string;
+}
 
-  // Brand & Business
-  { key: 'storeName', desc: 'Business / Bot name' },
-  { key: 'storeTagline', desc: 'Company tagline or slogan' },
-  { key: 'supportUsername', desc: 'Support Telegram username' },
-  { key: 'channelLink', desc: 'Official Telegram channel' },
-  { key: 'websiteUrl', desc: 'Main website link' },
+export const VARIABLE_CATEGORIES = [
+  { id: 'all', name: 'All Variables', icon: '✨' },
+  { id: 'user', name: 'User Profile', icon: '👤' },
+  { id: 'wallet', name: 'Wallet & Money', icon: '💰' },
+  { id: 'store', name: 'Store & Brand', icon: '🏪' },
+  { id: 'ecommerce', name: 'Orders & Sales', icon: '📦' },
+  { id: 'vps', name: 'VPS & Hosting', icon: '🖥️' },
+  { id: 'ai', name: 'AI & License Keys', icon: '🤖' },
+  { id: 'crypto', name: 'Crypto & FX', icon: '🪙' },
+  { id: 'inventory', name: 'Catalog & Stock', icon: '📊' },
+  { id: 'support', name: 'Support & Tickets', icon: '🎟️' },
+  { id: 'system', name: 'Date & System', icon: '📅' },
+] as const;
 
-  // E-commerce & Orders
-  { key: 'orderNumber', desc: 'Order tracking number' },
-  { key: 'productName', desc: 'Item / Service name' },
-  { key: 'unitPrice', desc: 'Individual item price' },
-  { key: 'quantity', desc: 'Purchased quantity' },
-  { key: 'total', desc: 'Total checkout price' },
+export const TEMPLATE_VARIABLES: TemplateVariable[] = [
+  // 1. User & Profile
+  { key: 'username', desc: 'Telegram @username', category: 'user', categoryIcon: '👤', example: 'ahmed_hassan' },
+  { key: 'firstName', desc: "User's first name", category: 'user', categoryIcon: '👤', example: 'Ahmed' },
+  { key: 'lastName', desc: "User's last name", category: 'user', categoryIcon: '👤', example: 'Hassan' },
+  { key: 'telegramId', desc: "User's numerical Telegram ID", category: 'user', categoryIcon: '👤', example: '617559388' },
+  { key: 'memberSince', desc: 'Account registration date', category: 'user', categoryIcon: '👤', example: '2026-01-15' },
+  { key: 'vipTier', desc: 'Loyalty rank (Standard / Gold / Platinum)', category: 'user', categoryIcon: '👤', example: 'Gold VIP' },
+  { key: 'isVip', desc: 'VIP membership flag (1 or 0)', category: 'user', categoryIcon: '👤', example: '1' },
+  { key: 'language', desc: 'Selected language code', category: 'user', categoryIcon: '👤', example: 'en' },
 
-  // Finance & Deposits
-  { key: 'networkName', desc: 'Payment method name' },
-  { key: 'accountNumber', desc: 'Receiving account / wallet' },
-  { key: 'accountTitle', desc: 'Account title / recipient' },
-  { key: 'minDeposit', desc: 'Minimum deposit required' },
-  { key: 'exchangeRate', desc: 'Currency exchange rate' },
-  { key: 'referralLink', desc: 'Personal affiliate link' },
-  { key: 'commissionRate', desc: 'Affiliate commission %' },
+  // 2. Wallet & Balances
+  { key: 'balance', desc: 'Available wallet balance in USD', category: 'wallet', categoryIcon: '💰', example: '45.50' },
+  { key: 'balancePkr', desc: 'Wallet balance converted to PKR', category: 'wallet', categoryIcon: '💰', example: '12,740' },
+  { key: 'currency', desc: 'Store currency code', category: 'wallet', categoryIcon: '💰', example: 'USD' },
+  { key: 'currencySymbol', desc: 'Active currency symbol', category: 'wallet', categoryIcon: '💰', example: '$' },
+  { key: 'deposited', desc: 'Lifetime total deposits ($)', category: 'wallet', categoryIcon: '💰', example: '150.00' },
+  { key: 'spent', desc: 'Lifetime total spent ($)', category: 'wallet', categoryIcon: '💰', example: '104.50' },
+  { key: 'referralEarnings', desc: 'Total affiliate commission earned ($)', category: 'wallet', categoryIcon: '💰', example: '18.20' },
+  { key: 'minDeposit', desc: 'Minimum deposit required', category: 'wallet', categoryIcon: '💰', example: '$1.00' },
+  { key: 'exchangeRate', desc: 'Live USD to PKR exchange rate', category: 'wallet', categoryIcon: '💰', example: '280' },
+  { key: 'referralLink', desc: 'Personal affiliate invite URL', category: 'wallet', categoryIcon: '💰', example: 'https://t.me/Bot?start=ref_123' },
+  { key: 'commissionRate', desc: 'Affiliate commission percentage', category: 'wallet', categoryIcon: '💰', example: '10%' },
+
+  // 3. Store & Brand Info
+  { key: 'storeName', desc: 'Business / Bot brand name', category: 'store', categoryIcon: '🏪', example: 'Delux Store' },
+  { key: 'storeTagline', desc: 'Store slogan or proposition', category: 'store', categoryIcon: '🏪', example: 'Premier Cloud & Digital Services' },
+  { key: 'botUsername', desc: 'Bot Telegram username', category: 'store', categoryIcon: '🏪', example: '@thedeluxstorebot' },
+  { key: 'supportUsername', desc: 'Official customer support @handle', category: 'store', categoryIcon: '🏪', example: '@deluxsupport' },
+  { key: 'channelLink', desc: 'Official news channel URL', category: 'store', categoryIcon: '🏪', example: 'https://t.me/deluxnews' },
+  { key: 'websiteUrl', desc: 'External web portal link', category: 'store', categoryIcon: '🏪', example: 'https://deluxstore.io' },
+  { key: 'operationalHours', desc: 'Live operating availability', category: 'store', categoryIcon: '🏪', example: '24/7 Automated' },
+
+  // 4. E-Commerce & Orders
+  { key: 'orders', desc: 'Total lifetime orders count', category: 'ecommerce', categoryIcon: '📦', example: '12' },
+  { key: 'orderNumber', desc: 'Order tracking identifier', category: 'ecommerce', categoryIcon: '📦', example: '10042' },
+  { key: 'productName', desc: 'Item / service title', category: 'ecommerce', categoryIcon: '📦', example: 'ChatGPT Enterprise 1-Year' },
+  { key: 'unitPrice', desc: 'Unit price per item', category: 'ecommerce', categoryIcon: '📦', example: '14.99' },
+  { key: 'quantity', desc: 'Purchased quantity', category: 'ecommerce', categoryIcon: '📦', example: '1' },
+  { key: 'total', desc: 'Checkout total price ($)', category: 'ecommerce', categoryIcon: '📦', example: '14.99' },
+  { key: 'afterBalance', desc: 'Remaining balance after checkout', category: 'ecommerce', categoryIcon: '📦', example: '30.51' },
+  { key: 'lastOrderStatus', desc: 'Status of recent order', category: 'ecommerce', categoryIcon: '📦', example: 'DELIVERED' },
+
+  // 5. VPS & Cloud Hosting
+  { key: 'vps.ip', desc: 'Server dedicated public IPv4 address', category: 'vps', categoryIcon: '🖥️', example: '185.192.110.42' },
+  { key: 'vps.os', desc: 'Operating system and distribution', category: 'vps', categoryIcon: '🖥️', example: 'Ubuntu 24.04 LTS' },
+  { key: 'vps.ram', desc: 'Allocated RAM memory specs', category: 'vps', categoryIcon: '🖥️', example: '8GB DDR5 ECC' },
+  { key: 'vps.cpu', desc: 'vCPU compute cores allocated', category: 'vps', categoryIcon: '🖥️', example: '4 vCPU (AMD EPYC)' },
+  { key: 'vps.bandwidth', desc: 'Monthly bandwidth quota', category: 'vps', categoryIcon: '🖥️', example: '10TB Unmetered' },
+  { key: 'vps.location', desc: 'Datacenter region and city', category: 'vps', categoryIcon: '🖥️', example: 'Frankfurt, Germany' },
+  { key: 'vps.status', desc: 'Current server power state', category: 'vps', categoryIcon: '🖥️', example: 'RUNNING' },
+  { key: 'vps.expiryDate', desc: 'Hosting service renewal due date', category: 'vps', categoryIcon: '🖥️', example: '2026-10-29' },
+
+  // 6. AI Tools & Software Licenses
+  { key: 'license.key', desc: 'Serial / activation license key', category: 'ai', categoryIcon: '🤖', example: 'GPT-PRO-9821-XKQW-2026' },
+  { key: 'license.plan', desc: 'AI or software tier name', category: 'ai', categoryIcon: '🤖', example: 'Claude 3.5 Sonnet Pro' },
+  { key: 'license.expiry', desc: 'License subscription end date', category: 'ai', categoryIcon: '🤖', example: '2027-01-01' },
+  { key: 'license.devices', desc: 'Max concurrent device seats', category: 'ai', categoryIcon: '🤖', example: '3 Concurrent Devices' },
+  { key: 'api.quota_left', desc: 'Remaining API query tokens', category: 'ai', categoryIcon: '🤖', example: '450,000 credits' },
+
+  // 7. Crypto Rates & FX
+  { key: 'crypto.btc_rate', desc: 'Real-time Bitcoin price in USD', category: 'crypto', categoryIcon: '🪙', example: '68,450' },
+  { key: 'crypto.eth_rate', desc: 'Real-time Ethereum price in USD', category: 'crypto', categoryIcon: '🪙', example: '3,520' },
+  { key: 'crypto.ton_rate', desc: 'Real-time Telegram TON coin price', category: 'crypto', categoryIcon: '🪙', example: '5.20' },
+  { key: 'crypto.usdt_rate', desc: 'USDT Tether peg rate', category: 'crypto', categoryIcon: '🪙', example: '1.00' },
+  { key: 'fx.usd_to_pkr', desc: 'Current USD to PKR exchange rate', category: 'crypto', categoryIcon: '🪙', example: '280.00' },
+
+  // 8. Catalog & Inventory
+  { key: 'inventory.in_stock_count', desc: 'Total items in stock storewide', category: 'inventory', categoryIcon: '📊', example: '342' },
+  { key: 'inventory.total_products', desc: 'Total active products in catalog', category: 'inventory', categoryIcon: '📊', example: '28' },
+  { key: 'inventory.stock', desc: 'Stock level for active selected item', category: 'inventory', categoryIcon: '📊', example: '15' },
+
+  // 9. Support & Warranty
+  { key: 'support.open_tickets', desc: 'Count of customer open tickets', category: 'support', categoryIcon: '🎟️', example: '0' },
+  { key: 'ticketNumber', desc: 'Active support ticket ID', category: 'support', categoryIcon: '🎟️', example: 'TCK-8921' },
+  { key: 'warranty', desc: 'Warranty duration & terms', category: 'support', categoryIcon: '🎟️', example: '30 Days Instant Replacement' },
+
+  // 10. System & Dynamic Dates
+  { key: 'date.today', desc: "Today's human-readable date", category: 'system', categoryIcon: '📅', example: 'Sep 29, 2026' },
+  { key: 'time.now', desc: 'Current UTC time', category: 'system', categoryIcon: '📅', example: '21:05 UTC' },
+  { key: 'year', desc: 'Current calendar year', category: 'system', categoryIcon: '📅', example: '2026' },
 ];
 
 export function uid() {
