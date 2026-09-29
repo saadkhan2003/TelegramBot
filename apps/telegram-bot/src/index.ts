@@ -89,6 +89,140 @@ function buildMainMenu(lang: string) {
   return keyboard;
 }
 
+// In-memory cache for bot screens with 60-second TTL
+const screenCache = new Map<string, { components: any[]; fetchedAt: number }>();
+const CACHE_TTL_MS = 60 * 1000;
+
+export async function getScreenConfig(key: string): Promise<any[] | null> {
+  const cached = screenCache.get(key);
+  const now = Date.now();
+  if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.components;
+  }
+
+  try {
+    const record = await prisma.systemSetting.findUnique({
+      where: { key: `bot_screen_${key}` },
+    });
+    if (record && record.value && Array.isArray((record.value as any).components)) {
+      const components = (record.value as any).components;
+      screenCache.set(key, { components, fetchedAt: now });
+      return components;
+    }
+  } catch (err) {
+    console.warn(`[BotBuilder] Failed to load screen ${key}:`, err);
+  }
+  return null;
+}
+
+export function renderScreen(
+  components: any[],
+  variables: Record<string, string | number>,
+): { text: string; keyboard: InlineKeyboard } {
+  const textLines: string[] = [];
+  const keyboard = new InlineKeyboard();
+
+  const interpolate = (str: string) => {
+    return Object.entries(variables).reduce(
+      (acc, [k, v]) => acc.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v ?? '')),
+      str,
+    );
+  };
+
+  for (const comp of components) {
+    switch (comp.type) {
+      case 'text': {
+        const content = interpolate(comp.content || '');
+        if (comp.bold) {
+          textLines.push(`*${content}*`);
+        } else if (comp.italic) {
+          textLines.push(`_${content}_`);
+        } else if (comp.mono) {
+          textLines.push(`\`${content}\``);
+        } else {
+          textLines.push(content);
+        }
+        break;
+      }
+      case 'field': {
+        const emoji = comp.emoji ? `${comp.emoji} ` : '';
+        const label = comp.label ? `*${interpolate(comp.label)}:* ` : '';
+        const value = interpolate(comp.value || '');
+        textLines.push(`${emoji}${label}${value}`);
+        break;
+      }
+      case 'numbered_list': {
+        if (Array.isArray(comp.items)) {
+          comp.items.forEach((item: string, idx: number) => {
+            textLines.push(`${idx + 1}. ${interpolate(item)}`);
+          });
+        }
+        break;
+      }
+      case 'divider': {
+        textLines.push('────────────────────────');
+        break;
+      }
+      case 'spacer': {
+        textLines.push('');
+        break;
+      }
+      case 'info_box': {
+        if (comp.header) {
+          textLines.push(`*${interpolate(comp.header)}*`);
+        }
+        if (comp.body) {
+          textLines.push(interpolate(comp.body));
+        }
+        break;
+      }
+      case 'button': {
+        keyboard.row().text(interpolate(comp.label || 'Button'), comp.action || 'nav_main');
+        break;
+      }
+      case 'button_row': {
+        if (Array.isArray(comp.buttons) && comp.buttons.length > 0) {
+          comp.buttons.forEach((b: any) => {
+            keyboard.text(interpolate(b.label), b.action);
+          });
+          keyboard.row();
+        }
+        break;
+      }
+      case 'button_grid': {
+        if (Array.isArray(comp.buttons) && comp.buttons.length > 0) {
+          let currentRowCount = 0;
+          for (const btn of comp.buttons) {
+            if (btn.fullWidth) {
+              if (currentRowCount > 0) {
+                keyboard.row();
+                currentRowCount = 0;
+              }
+              keyboard.text(interpolate(btn.label), btn.action).row();
+            } else {
+              keyboard.text(interpolate(btn.label), btn.action);
+              currentRowCount++;
+              if (currentRowCount >= 2) {
+                keyboard.row();
+                currentRowCount = 0;
+              }
+            }
+          }
+          if (currentRowCount > 0) {
+            keyboard.row();
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  return {
+    text: textLines.join('\n').trim(),
+    keyboard,
+  };
+}
+
 export function registerBotHandlers(bot: Bot, store?: any) {
   const storeName = store?.name || process.env.STORE_NAME || 'Delux Store';
 
@@ -122,6 +256,28 @@ export function registerBotHandlers(bot: Bot, store?: any) {
       }
     }
 
+    const customWelcome = await getScreenConfig('welcome');
+    if (customWelcome) {
+      const { text: customText, keyboard: customKb } = renderScreen(customWelcome, {
+        storeName,
+        username: user.telegramUsername || user.firstName || 'User',
+        firstName: user.firstName || 'User',
+        balance: Number(user.wallet?.cachedBalance ?? 0).toFixed(2),
+        deposited: Number(user.wallet?.totalDeposited ?? 0).toFixed(2),
+        spent: Number(user.wallet?.totalSpent ?? 0).toFixed(2),
+      });
+      try {
+        await ctx.reply(customText, {
+          reply_markup: customKb,
+          parse_mode: 'Markdown',
+        });
+        return;
+      } catch (e) {
+        await ctx.reply(customText, { reply_markup: customKb });
+        return;
+      }
+    }
+
     const welcomeText = t('welcome.title', user.preferredLanguage, {
       storeName,
     });
@@ -136,6 +292,28 @@ export function registerBotHandlers(bot: Bot, store?: any) {
     const user = await getUser(ctx);
     if (!user) return;
     userStates.delete(user.telegramUserId);
+
+    const customWelcome = await getScreenConfig('welcome');
+    if (customWelcome) {
+      const { text: customText, keyboard: customKb } = renderScreen(customWelcome, {
+        storeName,
+        username: user.telegramUsername || user.firstName || 'User',
+        firstName: user.firstName || 'User',
+        balance: Number(user.wallet?.cachedBalance ?? 0).toFixed(2),
+        deposited: Number(user.wallet?.totalDeposited ?? 0).toFixed(2),
+        spent: Number(user.wallet?.totalSpent ?? 0).toFixed(2),
+      });
+      try {
+        await ctx.editMessageText(customText, {
+          reply_markup: customKb,
+          parse_mode: 'Markdown',
+        });
+      } catch (e) {
+        await ctx.editMessageText(customText, { reply_markup: customKb });
+      }
+      await ctx.answerCallbackQuery();
+      return;
+    }
 
     await ctx.editMessageText(
       t('welcome.title', user.preferredLanguage, { storeName }),
@@ -716,6 +894,33 @@ bot.callbackQuery('nav_profile', async (ctx) => {
     prisma.referral.count({ where: { referrerUserId: user.id } }),
   ]);
 
+  const customProfile = await getScreenConfig('profile');
+  if (customProfile) {
+    const { text: customText, keyboard: customKb } = renderScreen(customProfile, {
+      storeName,
+      username: user.telegramUsername || user.firstName || 'User',
+      firstName: user.firstName || 'User',
+      telegramId: user.telegramUserId.toString(),
+      balance: Number(user.wallet?.cachedBalance ?? 0).toFixed(2),
+      deposited: Number(user.wallet?.totalDeposited ?? 0).toFixed(2),
+      spent: Number(user.wallet?.totalSpent ?? 0).toFixed(2),
+      orders: orderCount,
+      referrals: referralCount,
+      referralEarnings: Number(user.wallet?.referralEarnings ?? 0).toFixed(2),
+      memberSince: user.createdAt.toISOString().slice(0, 10),
+    });
+    try {
+      await ctx.editMessageText(customText, {
+        reply_markup: customKb,
+        parse_mode: 'Markdown',
+      });
+    } catch (e) {
+      await ctx.editMessageText(customText, { reply_markup: customKb });
+    }
+    await ctx.answerCallbackQuery();
+    return;
+  }
+
   const text = t('profile.title', user.preferredLanguage, {
     username: user.telegramUsername || user.firstName || 'User',
     telegramId: user.telegramUserId.toString(),
@@ -887,6 +1092,25 @@ bot.callbackQuery('nav_support', async (ctx) => {
   const user = await getUser(ctx);
   if (!user) return;
 
+  const customSupport = await getScreenConfig('support');
+  if (customSupport) {
+    const { text: customText, keyboard: customKb } = renderScreen(customSupport, {
+      storeName,
+      username: user.telegramUsername || user.firstName || 'User',
+      firstName: user.firstName || 'User',
+    });
+    try {
+      await ctx.editMessageText(customText, {
+        reply_markup: customKb,
+        parse_mode: 'Markdown',
+      });
+    } catch (e) {
+      await ctx.editMessageText(customText, { reply_markup: customKb });
+    }
+    await ctx.answerCallbackQuery();
+    return;
+  }
+
   const kb = new InlineKeyboard()
     .text(t('support.order_issue', user.preferredLanguage), 'support_cat_order')
     .row()
@@ -899,6 +1123,29 @@ bot.callbackQuery('nav_support', async (ctx) => {
     .text(t('menu.main', user.preferredLanguage), 'nav_main');
 
   await ctx.editMessageText(t('support.title', user.preferredLanguage), { reply_markup: kb });
+  await ctx.answerCallbackQuery();
+});
+
+bot.callbackQuery(['support_order_issue', 'support_deposit_issue', 'support_warranty', 'support_question'], async (ctx) => {
+  const user = await getUser(ctx);
+  if (!user) return;
+
+  const action = ctx.callbackQuery.data;
+  const catMap: Record<string, string> = {
+    support_order_issue: 'order',
+    support_deposit_issue: 'deposit',
+    support_warranty: 'warranty',
+    support_question: 'general',
+  };
+  const cat = catMap[action] || 'general';
+
+  userStates.set(user.telegramUserId, {
+    state: 'WAITING_SUPPORT_MESSAGE',
+    metadata: { category: cat },
+  });
+
+  const kb = new InlineKeyboard().text(t('menu.back', user.preferredLanguage), 'nav_support');
+  await ctx.editMessageText(t('support.prompt_message', user.preferredLanguage), { reply_markup: kb });
   await ctx.answerCallbackQuery();
 });
 

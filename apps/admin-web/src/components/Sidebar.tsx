@@ -50,6 +50,7 @@ const navigationGroups = [
     items: [
       { name: 'Customers & Users', href: '/customers', icon: Users },
       { name: 'Support & Claims', href: '/support', icon: LifeBuoy },
+      { name: 'Bot Builder', href: '/bot-builder', icon: Sparkles },
       { name: 'System Settings', href: '/settings', icon: Settings },
     ],
   },

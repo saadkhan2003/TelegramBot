@@ -8,8 +8,9 @@
     "start": "next start -p 3000"
   },
   "dependencies": {
-    "@telegram-store/shared": "workspace:*",
+    "@hello-pangea/dnd": "^18.0.1",
     "@tanstack/react-query": "^5.66.0",
+    "@telegram-store/shared": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",
     "next": "^15.1.7",

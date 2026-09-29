@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { SettingsService } from './settings.service';
 import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
 
@@ -49,5 +49,20 @@ export class SettingsController {
       limit: limit ? parseInt(limit, 10) : 50,
       resourceType,
     });
+  }
+
+  @Get('bot-screens')
+  @RequirePermissions('settings.manage')
+  async getBotScreens() {
+    return this.settingsService.getBotScreens();
+  }
+
+  @Put('bot-screens/:key')
+  @RequirePermissions('settings.manage')
+  async saveBotScreen(
+    @Param('key') key: string,
+    @Body() body: { components: any[] },
+  ) {
+    return this.settingsService.saveBotScreen(key, body.components);
   }
 }
