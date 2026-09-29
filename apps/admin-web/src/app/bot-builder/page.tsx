@@ -698,22 +698,6 @@ export default function BotBuilderPage() {
             )}
           </button>
 
-          {/* Toggle Left Studio Tools Panel (Only in Studio mode) */}
-          {viewMode === 'studio' && (
-            <button
-              type="button"
-              onClick={() => setIsStudioPanelCollapsed((prev) => !prev)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium border transition cursor-pointer shadow-2xs ${
-                isStudioPanelCollapsed
-                  ? 'bg-[#eff6fc] text-[#0078d4] border-[#c7e0f4] font-bold'
-                  : 'bg-white hover:bg-[#f3f2f1] text-[#323130] border-[#d2d0ce]'
-              }`}
-              title={isStudioPanelCollapsed ? "Show Studio Elements & Tools panel" : "Hide Studio Tools to maximize preview canvas"}
-            >
-              <Sliders className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{isStudioPanelCollapsed ? 'Show Tools' : 'Hide Tools'}</span>
-            </button>
-          )}
 
           {/* View Mode Switcher: Studio Canvas vs ManyChat Flow Blueprint */}
           <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-md border border-[#d2d0ce] ml-1">

@@ -381,7 +381,7 @@ const PALETTE_GROUPS: { group: string; items: PaletteItem[] }[] = [
 
 export default function ComponentPalette({ onAdd }: ComponentPaletteProps) {
   return (
-    <aside className="w-64 bg-white border-r border-[#edebe9] flex flex-col h-full select-none shrink-0">
+    <aside className="w-full bg-white flex flex-col h-full select-none overflow-hidden">
       <div className="p-3 border-b border-[#edebe9] bg-[#faf9f8]">
         <h2 className="text-xs font-bold uppercase tracking-wider text-[#323130]">Element Library</h2>
         <p className="text-[11px] text-[#605e5c] mt-0.5">Click any block to insert into canvas</p>
