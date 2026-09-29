@@ -103,16 +103,28 @@ export class SettingsService {
     }, {});
   }
 
-  async saveBotScreen(key: string, components: any[]) {
+  async saveBotScreen(key: string, data: { components: any[]; meta?: any }) {
     const settingKey = `bot_screen_${key}`;
+    const value = {
+      components: data.components,
+      meta: data.meta || null,
+    };
     return this.prisma.systemSetting.upsert({
       where: { key: settingKey },
       create: {
         key: settingKey,
-        value: { components },
+        value,
         description: `Bot screen layout for: ${key}`,
       },
-      update: { value: { components } },
+      update: { value },
     });
+  }
+
+  async deleteBotScreen(key: string) {
+    const settingKey = `bot_screen_${key}`;
+    await this.prisma.systemSetting.deleteMany({
+      where: { key: settingKey },
+    });
+    return { success: true, key };
   }
 }

@@ -125,8 +125,23 @@ export function renderScreen(
   const interpolate = (str: string) => {
     return Object.entries(variables).reduce(
       (acc, [k, v]) => acc.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v ?? '')),
-      str,
+      str || '',
     );
+  };
+
+  const appendButton = (kb: InlineKeyboard, btn: any) => {
+    const label = interpolate(btn.label || 'Button');
+    if (btn.type === 'url' && btn.url) {
+      return kb.url(label, btn.url);
+    }
+    if (btn.type === 'web_app' && btn.webAppUrl) {
+      return kb.webApp(label, btn.webAppUrl);
+    }
+    if (btn.type === 'screen' && btn.targetScreen) {
+      return kb.text(label, `screen_${btn.targetScreen}`);
+    }
+    const action = btn.action || 'nav_main';
+    return kb.text(label, action);
   };
 
   for (const comp of components) {
@@ -144,11 +159,36 @@ export function renderScreen(
         }
         break;
       }
+      case 'image': {
+        if (comp.imageUrl) {
+          textLines.push(`[​​​​​​​​​​​](${comp.imageUrl})`); // Hidden markdown preview image
+        }
+        if (comp.caption) {
+          textLines.push(interpolate(comp.caption));
+        }
+        break;
+      }
+      case 'quote': {
+        const quoteText = interpolate(comp.content || '');
+        textLines.push(`> ${quoteText}`);
+        if (comp.author) {
+          textLines.push(`> _— ${interpolate(comp.author)}_`);
+        }
+        break;
+      }
       case 'field': {
         const emoji = comp.emoji ? `${comp.emoji} ` : '';
         const label = comp.label ? `*${interpolate(comp.label)}:* ` : '';
         const value = interpolate(comp.value || '');
         textLines.push(`${emoji}${label}${value}`);
+        break;
+      }
+      case 'bullet_list': {
+        if (Array.isArray(comp.items)) {
+          comp.items.forEach((item: string) => {
+            textLines.push(`• ${interpolate(item)}`);
+          });
+        }
         break;
       }
       case 'numbered_list': {
@@ -176,14 +216,52 @@ export function renderScreen(
         }
         break;
       }
+      case 'alert_banner': {
+        const icons: Record<string, string> = {
+          success: '✅',
+          warning: '⚠️',
+          danger: '🚨',
+          info: 'ℹ️',
+        };
+        const icon = icons[comp.alertVariant || 'info'] || 'ℹ️';
+        if (comp.header) {
+          textLines.push(`${icon} *${interpolate(comp.header)}*`);
+        }
+        if (comp.body) {
+          textLines.push(interpolate(comp.body));
+        }
+        break;
+      }
+      case 'faq_item': {
+        if (comp.question) {
+          textLines.push(`❓ *${interpolate(comp.question)}*`);
+        }
+        if (comp.answer) {
+          textLines.push(`💡 ${interpolate(comp.answer)}`);
+        }
+        break;
+      }
+      case 'social_links': {
+        if (Array.isArray(comp.links) && comp.links.length > 0) {
+          comp.links.forEach((l: any) => {
+            const label = `${l.emoji ? `${l.emoji} ` : ''}${interpolate(l.label || l.platform)}`;
+            if (l.url) {
+              keyboard.url(label, l.url).row();
+            }
+          });
+        }
+        break;
+      }
       case 'button': {
-        keyboard.row().text(interpolate(comp.label || 'Button'), comp.action || 'nav_main');
+        keyboard.row();
+        appendButton(keyboard, comp);
+        keyboard.row();
         break;
       }
       case 'button_row': {
         if (Array.isArray(comp.buttons) && comp.buttons.length > 0) {
           comp.buttons.forEach((b: any) => {
-            keyboard.text(interpolate(b.label), b.action);
+            appendButton(keyboard, b);
           });
           keyboard.row();
         }
@@ -198,9 +276,9 @@ export function renderScreen(
                 keyboard.row();
                 currentRowCount = 0;
               }
-              keyboard.text(interpolate(btn.label), btn.action).row();
+              appendButton(keyboard, btn).row();
             } else {
-              keyboard.text(interpolate(btn.label), btn.action);
+              appendButton(keyboard, btn);
               currentRowCount++;
               if (currentRowCount >= 2) {
                 keyboard.row();
@@ -322,6 +400,48 @@ export function registerBotHandlers(bot: Bot, store?: any) {
       },
     );
     await ctx.answerCallbackQuery();
+  });
+
+  // DYNAMIC CUSTOM SCREEN NAVIGATION (ANY SCREEN CREATED IN BUILDER)
+  bot.callbackQuery(/^(screen:|screen_)(.+)$/, async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return;
+    const screenKey = ctx.match[2]!;
+
+    const customScreen = await getScreenConfig(screenKey);
+    if (customScreen) {
+      const [orderCount, referralCount] = await Promise.all([
+        prisma.order.count({ where: { userId: user.id } }),
+        prisma.referral.count({ where: { referrerUserId: user.id } }),
+      ]);
+
+      const { text: customText, keyboard: customKb } = renderScreen(customScreen, {
+        storeName,
+        username: user.telegramUsername || user.firstName || 'User',
+        firstName: user.firstName || 'User',
+        lastName: user.lastName || '',
+        telegramId: user.telegramUserId.toString(),
+        balance: Number(user.wallet?.cachedBalance ?? 0).toFixed(2),
+        deposited: Number(user.wallet?.totalDeposited ?? 0).toFixed(2),
+        spent: Number(user.wallet?.totalSpent ?? 0).toFixed(2),
+        orders: orderCount,
+        referrals: referralCount,
+        memberSince: user.createdAt.toISOString().slice(0, 10),
+      });
+
+      try {
+        await ctx.editMessageText(customText, {
+          reply_markup: customKb,
+          parse_mode: 'Markdown',
+        });
+      } catch (e) {
+        await ctx.editMessageText(customText, { reply_markup: customKb });
+      }
+      await ctx.answerCallbackQuery();
+      return;
+    }
+
+    await ctx.answerCallbackQuery({ text: 'Screen not configured yet' });
   });
 
 // BUY / CATALOG

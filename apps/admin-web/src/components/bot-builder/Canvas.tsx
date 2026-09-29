@@ -16,6 +16,7 @@ import {
   Heading,
   Square,
   ListOrdered,
+  List,
   Minus,
   MoveVertical,
   Info,
@@ -23,6 +24,11 @@ import {
   Grid3X3,
   Eye,
   Layers,
+  Image as ImageIcon,
+  Quote,
+  AlertTriangle,
+  HelpCircle,
+  Share2,
 } from 'lucide-react';
 import { BotComponent } from '../../lib/botBuilderTypes';
 import TelegramPreview from './TelegramPreview';
@@ -42,9 +48,15 @@ function getComponentIcon(type: BotComponent['type'], isBold?: boolean) {
   if (type === 'text') {
     return isBold ? <Heading className="h-3.5 w-3.5 text-[#0078d4]" /> : <Type className="h-3.5 w-3.5 text-[#605e5c]" />;
   }
+  if (type === 'image') return <ImageIcon className="h-3.5 w-3.5 text-[#8764b8]" />;
+  if (type === 'quote') return <Quote className="h-3.5 w-3.5 text-[#5288c1]" />;
   if (type === 'field') return <Square className="h-3.5 w-3.5 text-[#107c41]" />;
   if (type === 'info_box') return <Info className="h-3.5 w-3.5 text-[#005a9e]" />;
+  if (type === 'alert_banner') return <AlertTriangle className="h-3.5 w-3.5 text-[#d83b01]" />;
+  if (type === 'faq_item') return <HelpCircle className="h-3.5 w-3.5 text-[#0078d4]" />;
+  if (type === 'social_links') return <Share2 className="h-3.5 w-3.5 text-[#107c41]" />;
   if (type === 'numbered_list') return <ListOrdered className="h-3.5 w-3.5 text-[#8764b8]" />;
+  if (type === 'bullet_list') return <List className="h-3.5 w-3.5 text-[#8764b8]" />;
   if (type === 'divider') return <Minus className="h-3.5 w-3.5 text-[#8a8886]" />;
   if (type === 'spacer') return <MoveVertical className="h-3.5 w-3.5 text-[#a19f9d]" />;
   if (type === 'button') return <Square className="h-3.5 w-3.5 text-[#d83b01]" />;
@@ -61,12 +73,32 @@ function renderComponentPreview(comp: BotComponent) {
           {comp.bold ? <strong className="font-semibold">{comp.content || '(empty header)'}</strong> : comp.content || '(empty text)'}
         </div>
       );
+    case 'image':
+      return (
+        <div className="text-xs text-[#323130] flex items-center gap-1.5 truncate">
+          <span className="font-semibold text-[#8764b8]">Photo Banner:</span>
+          <span className="text-[#605e5c] truncate text-[11px]">{comp.caption || comp.imageUrl || 'Image'}</span>
+        </div>
+      );
+    case 'quote':
+      return (
+        <div className="text-xs text-[#5288c1] italic truncate">
+          &ldquo;{comp.content || 'Quote'}&rdquo; {comp.author ? `— ${comp.author}` : ''}
+        </div>
+      );
     case 'field':
       return (
         <div className="text-xs text-[#323130] flex items-center gap-1.5 truncate">
           <span>{comp.emoji || '📌'}</span>
           <span className="font-semibold text-[#605e5c]">{comp.label || 'Field'}:</span>
           <span className="font-mono text-[#0078d4] text-[11px] truncate">{comp.value || '{value}'}</span>
+        </div>
+      );
+    case 'bullet_list':
+      return (
+        <div className="text-xs text-[#605e5c] truncate">
+          <span className="font-semibold">{comp.items?.length || 0} bullets: </span>
+          <span className="italic">{comp.items?.[0] || 'No items'}...</span>
         </div>
       );
     case 'numbered_list':
@@ -83,19 +115,41 @@ function renderComponentPreview(comp: BotComponent) {
           <span className="text-[#605e5c] truncate">{comp.body || 'Callout text'}</span>
         </div>
       );
+    case 'alert_banner':
+      return (
+        <div className="text-xs text-[#d83b01] truncate flex items-center gap-1">
+          <span className="font-bold">[{comp.alertVariant || 'info'} alert]:</span>
+          <span className="text-[#323130] truncate">{comp.header || 'Notice'}</span>
+        </div>
+      );
+    case 'faq_item':
+      return (
+        <div className="text-xs text-[#323130] truncate">
+          <span className="font-bold text-[#0078d4]">Q: {comp.question || 'FAQ'}: </span>
+          <span className="text-[#605e5c] truncate">{comp.answer || ''}</span>
+        </div>
+      );
+    case 'social_links':
+      return (
+        <div className="text-xs text-[#107c41] truncate font-medium">
+          🌐 {comp.links?.length || 0} Social / Channel link(s)
+        </div>
+      );
     case 'divider':
       return <div className="text-[11px] text-[#8a8886] italic tracking-wide">── Horizontal Line Separator ──</div>;
     case 'spacer':
       return <div className="text-[11px] text-[#a19f9d] italic">↕ Vertical Spacing (Empty Line)</div>;
-    case 'button':
+    case 'button': {
+      const typeLabel = comp.buttonType === 'url' ? '↗ URL' : comp.buttonType === 'web_app' ? '⚡ WebApp' : comp.buttonType === 'screen' ? '➔ Screen' : '⚡ Action';
       return (
         <div className="flex items-center gap-2">
           <span className="px-2 py-0.5 bg-[#f3f2f1] text-[#323130] text-[11px] rounded border border-[#d2d0ce] font-medium">
             {comp.label || 'Button'}
           </span>
-          <span className="text-[10px] text-[#8a8886] font-mono">→ {comp.action || 'nav_main'}</span>
+          <span className="text-[10px] text-[#8a8886] font-mono">{typeLabel}</span>
         </div>
       );
+    }
     case 'button_row':
       return (
         <div className="flex items-center gap-1.5 overflow-hidden">
