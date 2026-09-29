@@ -74,7 +74,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               <div className="h-full w-full rounded-xl bg-white p-1 border border-white/80 shadow-xs flex items-center justify-center overflow-hidden">
                 <img
                   src="/icons/icon-192.png"
-                  alt="Delux Store"
+                  alt="Store Console"
                   className="h-full w-full object-cover rounded-[8px]"
                 />
               </div>
@@ -91,7 +91,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <div className="mt-4 space-y-1">
             <div className="flex items-center justify-center gap-1.5">
               <h2 className="text-base font-bold tracking-tight text-[#1b1a19]">
-                Delux Store
+                Store Admin
               </h2>
               <span className="text-[10px] font-mono font-semibold text-[#0078d4] bg-[#eff6fc] border border-[#c7e0f4] px-1.5 py-0.2 rounded">
                 Console

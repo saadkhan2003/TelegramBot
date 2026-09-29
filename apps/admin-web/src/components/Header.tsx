@@ -31,6 +31,7 @@ import {
 import { fetchApi } from '../lib/api';
 import { useNavigation } from '../context/NavigationContext';
 import { useAuth } from '../context/AuthContext';
+import { useStore } from '../context/StoreContext';
 import { Avatar } from './Avatar';
 import { CommandPalette } from './CommandPalette';
 
@@ -52,6 +53,7 @@ export default function Header() {
   const pathname = usePathname();
   const { toggleMobileMenu, isSidebarCollapsed, toggleSidebarCollapse } = useNavigation();
   const { user, logout } = useAuth();
+  const { activeStore } = useStore();
 
   // Dropdown & Modal states
   const [isOpen, setIsOpen] = useState(false);
@@ -183,7 +185,7 @@ export default function Header() {
         {/* Mobile Brand Emblem */}
         <div className="lg:hidden flex items-center gap-1 shrink-0">
           <div className="h-6 w-6 rounded-[5px] bg-[#051329] border border-[#0078d4]/30 overflow-hidden shadow-xs p-[1px]">
-            <img src="/icons/icon-192.png" alt="Delux Store" className="h-full w-full object-cover rounded-[4px]" />
+            <img src="/icons/icon-192.png" alt={activeStore?.name || 'Store'} className="h-full w-full object-cover rounded-[4px]" />
           </div>
         </div>
 
@@ -213,7 +215,7 @@ export default function Header() {
             href="/"
             className="font-semibold text-[#0f172a] hover:text-[#0078d4] transition flex items-center gap-1.5"
           >
-            <span>Delux Store</span>
+            <span>{activeStore?.name || 'Store'}</span>
           </Link>
           <span className="text-[#cbd5e1] font-normal">/</span>
           <span className="font-semibold text-[#1e293b]">{currentRoute.title}</span>
@@ -287,20 +289,31 @@ export default function Header() {
         </div>
 
         {/* Telegram Bot Live Fleet Status */}
-        <a
-          href="https://t.me/thedeluxstorebot"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden xl:flex items-center gap-2 px-2.5 py-1 rounded-[5px] bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs transition shadow-2xs"
-          title="Direct link to customer Telegram Bot"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <span className="font-mono text-[11px] text-[#0f172a] font-medium">@thedeluxstorebot</span>
-          <ExternalLink className="h-3 w-3 text-[#94a3b8]" />
-        </a>
+        {activeStore?.botUsername ? (
+          <a
+            href={`https://t.me/${activeStore.botUsername.replace('@', '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden xl:flex items-center gap-2 px-2.5 py-1 rounded-[5px] bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs transition shadow-2xs"
+            title="Direct link to customer Telegram Bot"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="font-mono text-[11px] text-[#0f172a] font-medium">@{activeStore.botUsername.replace('@', '')}</span>
+            <ExternalLink className="h-3 w-3 text-[#94a3b8]" />
+          </a>
+        ) : (
+          <Link
+            href="/settings"
+            className="hidden xl:flex items-center gap-2 px-2.5 py-1 rounded-[5px] bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs transition shadow-2xs text-[#64748b] hover:text-[#0f172a]"
+            title="Connect your Telegram Bot Token in Settings"
+          >
+            <span className="h-2 w-2 rounded-full bg-amber-400"></span>
+            <span className="font-mono text-[11px] font-medium text-[#64748b]">No Bot Connected</span>
+          </Link>
+        )}
 
         {/* Notification Bell Dropdown */}
         <div className="relative" ref={dropdownRef}>

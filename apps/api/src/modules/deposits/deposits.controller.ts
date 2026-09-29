@@ -65,12 +65,15 @@ export class DepositsController {
   @Get()
   @RequirePermissions('deposits.view')
   async findAll(
+    @Req() req: any,
     @Query('userId') userId?: string,
     @Query('status') status?: DepositStatus,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
     return this.depositsService.findAll({
+      storeId,
       userId,
       status,
       page: page ? parseInt(page, 10) : 1,

@@ -53,8 +53,9 @@ export class SettingsController {
 
   @Get('bot-screens')
   @RequirePermissions('settings.manage')
-  async getBotScreens() {
-    return this.settingsService.getBotScreens();
+  async getBotScreens(@Req() req: any) {
+    const storeId = req.headers['x-store-id'] as string;
+    return this.settingsService.getBotScreens(storeId);
   }
 
   @Put('bot-screens/:key')
@@ -62,13 +63,16 @@ export class SettingsController {
   async saveBotScreen(
     @Param('key') key: string,
     @Body() body: { components: any[]; meta?: any },
+    @Req() req: any,
   ) {
-    return this.settingsService.saveBotScreen(key, body);
+    const storeId = req.headers['x-store-id'] as string;
+    return this.settingsService.saveBotScreen(key, body, storeId);
   }
 
   @Delete('bot-screens/:key')
   @RequirePermissions('settings.manage')
-  async deleteBotScreen(@Param('key') key: string) {
-    return this.settingsService.deleteBotScreen(key);
+  async deleteBotScreen(@Param('key') key: string, @Req() req: any) {
+    const storeId = req.headers['x-store-id'] as string;
+    return this.settingsService.deleteBotScreen(key, storeId);
   }
 }

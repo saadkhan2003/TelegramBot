@@ -120,27 +120,39 @@ interface CachedScreen {
 const screenCache = new Map<string, CachedScreen>();
 const CACHE_TTL_MS = 60 * 1000;
 
-export async function getScreenConfig(key: string): Promise<any[] | null> {
-  const full = await getScreenFull(key);
+export async function getScreenConfig(key: string, storeId?: string): Promise<any[] | null> {
+  const full = await getScreenFull(key, storeId);
   return full ? full.components : null;
 }
 
-export async function getScreenFull(key: string): Promise<{ components: any[]; triggers?: any; meta?: any } | null> {
-  const cached = screenCache.get(key);
+export async function getScreenFull(
+  key: string,
+  storeId?: string,
+): Promise<{ components: any[]; triggers?: any; meta?: any } | null> {
+  const cacheKey = storeId ? `${storeId}_${key}` : key;
+  const cached = screenCache.get(cacheKey);
   const now = Date.now();
   if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
     return { components: cached.components, triggers: cached.triggers, meta: cached.meta };
   }
 
   try {
-    const record = await prisma.systemSetting.findUnique({
-      where: { key: `bot_screen_${key}` },
-    });
+    let record = null;
+    if (storeId) {
+      record = await prisma.systemSetting.findUnique({
+        where: { key: `bot_screen_${storeId}_${key}` },
+      });
+    }
+    if (!record) {
+      record = await prisma.systemSetting.findUnique({
+        where: { key: `bot_screen_${key}` },
+      });
+    }
     if (record && record.value && Array.isArray((record.value as any).components)) {
       const components = (record.value as any).components;
       const triggers = (record.value as any).triggers || (record.value as any).meta?.triggers;
       const meta = (record.value as any).meta;
-      screenCache.set(key, { components, triggers, meta, fetchedAt: now });
+      screenCache.set(cacheKey, { components, triggers, meta, fetchedAt: now });
       return { components, triggers, meta };
     }
   } catch (err) {
@@ -149,13 +161,19 @@ export async function getScreenFull(key: string): Promise<{ components: any[]; t
   return null;
 }
 
-export async function getAllScreens(): Promise<Array<{ key: string; components: any[]; triggers?: any }>> {
+export async function getAllScreens(storeId?: string): Promise<Array<{ key: string; components: any[]; triggers?: any }>> {
   try {
-    const records = await prisma.systemSetting.findMany({
-      where: { key: { startsWith: 'bot_screen_' } },
+    const prefix = storeId ? `bot_screen_${storeId}_` : 'bot_screen_';
+    let records = await prisma.systemSetting.findMany({
+      where: { key: { startsWith: prefix } },
     });
+    if (records.length === 0 && storeId) {
+      records = await prisma.systemSetting.findMany({
+        where: { key: { startsWith: 'bot_screen_' } },
+      });
+    }
     return records.map((r) => {
-      const key = r.key.replace('bot_screen_', '');
+      const key = r.key.replace(prefix, '').replace('bot_screen_', '');
       const val = r.value as any;
       return {
         key,
@@ -521,7 +539,8 @@ export function renderScreen(
 }
 
 export function registerBotHandlers(bot: Bot, store?: any) {
-  const storeName = store?.name || process.env.STORE_NAME || 'Delux Store';
+  const storeId = store?.id;
+  const storeName = store?.name || process.env.STORE_NAME || 'Store';
 
   // /start command
   bot.command('start', async (ctx) => {
@@ -553,7 +572,7 @@ export function registerBotHandlers(bot: Bot, store?: any) {
       }
     }
 
-    const customWelcome = await getScreenConfig('welcome');
+    const customWelcome = await getScreenConfig('welcome', storeId);
     if (customWelcome) {
       const { text: customText, keyboard: customKb } = renderScreen(customWelcome, {
         storeName,
@@ -590,7 +609,7 @@ export function registerBotHandlers(bot: Bot, store?: any) {
     if (!user) return;
     userStates.delete(user.telegramUserId);
 
-    const customWelcome = await getScreenConfig('welcome');
+    const customWelcome = await getScreenConfig('welcome', storeId);
     if (customWelcome) {
       const { text: customText, keyboard: customKb } = renderScreen(customWelcome, {
         storeName,
@@ -763,7 +782,7 @@ export function registerBotHandlers(bot: Bot, store?: any) {
       prisma.referral.count({ where: { referrerUserId: user.id } }),
     ]);
 
-    const customProfile = await getScreenConfig('profile');
+    const customProfile = await getScreenConfig('profile', storeId);
     if (customProfile) {
       const { text: customText, keyboard: customKb } = renderScreen(customProfile, {
         storeName,
@@ -840,7 +859,7 @@ export function registerBotHandlers(bot: Bot, store?: any) {
     const user = await getUser(ctx);
     if (!user) return;
 
-    const customSupport = await getScreenConfig('support');
+    const customSupport = await getScreenConfig('support', storeId);
     if (customSupport) {
       const { text: customText, keyboard: customKb } = renderScreen(customSupport, {
         storeName,
@@ -911,7 +930,7 @@ export function registerBotHandlers(bot: Bot, store?: any) {
     if (!user) return;
     userStates.delete(user.telegramUserId);
 
-    const customWelcome = await getScreenConfig('welcome');
+    const customWelcome = await getScreenConfig('welcome', storeId);
     if (customWelcome) {
       const { text: customText, keyboard: customKb } = renderScreen(customWelcome, {
         storeName,
@@ -948,7 +967,7 @@ export function registerBotHandlers(bot: Bot, store?: any) {
     if (!user) return;
     const screenKey = ctx.match[2]!;
 
-    const customScreen = await getScreenConfig(screenKey);
+    const customScreen = await getScreenConfig(screenKey, storeId);
     if (customScreen) {
       const vars = await buildScreenVariables(user, storeName);
       const { text: customText, keyboard: customKb } = renderScreen(customScreen, vars);
@@ -1579,7 +1598,7 @@ bot.callbackQuery('nav_profile', async (ctx) => {
     prisma.referral.count({ where: { referrerUserId: user.id } }),
   ]);
 
-  const customProfile = await getScreenConfig('profile');
+  const customProfile = await getScreenConfig('profile', storeId);
   if (customProfile) {
     const { text: customText, keyboard: customKb } = renderScreen(customProfile, {
       storeName,
@@ -1777,7 +1796,7 @@ bot.callbackQuery('nav_support', async (ctx) => {
   const user = await getUser(ctx);
   if (!user) return;
 
-  const customSupport = await getScreenConfig('support');
+  const customSupport = await getScreenConfig('support', storeId);
   if (customSupport) {
     const { text: customText, keyboard: customKb } = renderScreen(customSupport, {
       storeName,
@@ -1860,7 +1879,7 @@ bot.on('message:text', async (ctx) => {
     const rawText = ctx.message.text.trim().toLowerCase();
 
     // 1. Intelligent Keyword Listeners & Slash Commands Router
-    const allScreens = await getAllScreens();
+    const allScreens = await getAllScreens(storeId);
     const matchingScreen = allScreens.find((s) => {
       const keywords = s.triggers?.keywords || [];
       const slash = s.triggers?.slashCommands || [];

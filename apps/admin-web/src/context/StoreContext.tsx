@@ -12,6 +12,8 @@ export interface Store {
   currency: string;
   botUsername?: string;
   botStatus: string;
+  welcomeMessage?: string;
+  supportUsername?: string;
   hasBotToken: boolean;
   owner?: { id: string; name: string; email: string };
   counts?: {

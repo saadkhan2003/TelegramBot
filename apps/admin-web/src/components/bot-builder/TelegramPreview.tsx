@@ -27,10 +27,10 @@ interface TelegramPreviewProps {
 }
 
 const SAMPLE_VARS: Record<string, string> = {
-  storeName: 'Delux Store',
+  storeName: 'Your Store',
   storeTagline: 'Premier Cloud & Digital Services',
-  botUsername: '@thedeluxstorebot',
-  supportUsername: '@deluxsupport',
+  botUsername: '@yourbot',
+  supportUsername: '@support',
   channelLink: 'https://t.me/deluxnews',
   websiteUrl: 'https://deluxstore.io',
   operationalHours: '24/7 Automated',
@@ -168,7 +168,7 @@ function renderButtonIcon(btn: BotButton) {
 
 export default function TelegramPreview({
   components,
-  storeName = 'Delux Store',
+  storeName = 'Your Store',
   selectedId,
   onSelect,
   showDeviceFrame = true,

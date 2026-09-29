@@ -11,12 +11,15 @@ export class SupportController {
   @Get('tickets')
   @RequirePermissions('support.manage')
   async getTickets(
+    @Req() req: any,
     @Query('userId') userId?: string,
     @Query('status') status?: TicketStatus,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
     return this.supportService.findTickets({
+      storeId,
       userId,
       status,
       page: page ? parseInt(page, 10) : 1,

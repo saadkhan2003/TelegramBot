@@ -46,6 +46,8 @@ export class StoresService {
       currency: s.currency,
       botUsername: s.botUsername,
       botStatus: s.botStatus,
+      welcomeMessage: s.welcomeMessage,
+      supportUsername: s.supportUsername,
       hasBotToken: Boolean(s.botToken && s.botToken.length > 10),
       owner: s.owner,
       counts: s._count,

@@ -93,18 +93,19 @@ export class SettingsService {
     };
   }
 
-  async getBotScreens() {
+  async getBotScreens(storeId?: string) {
+    const prefix = storeId ? `bot_screen_${storeId}_` : 'bot_screen_';
     const records = await this.prisma.systemSetting.findMany({
-      where: { key: { startsWith: 'bot_screen_' } },
+      where: { key: { startsWith: prefix } },
     });
     return records.reduce((acc: Record<string, any>, r) => {
-      acc[r.key.replace('bot_screen_', '')] = r.value;
+      acc[r.key.replace(prefix, '')] = r.value;
       return acc;
     }, {});
   }
 
-  async saveBotScreen(key: string, data: { components: any[]; meta?: any }) {
-    const settingKey = `bot_screen_${key}`;
+  async saveBotScreen(key: string, data: { components: any[]; meta?: any }, storeId?: string) {
+    const settingKey = storeId ? `bot_screen_${storeId}_${key}` : `bot_screen_${key}`;
     const value = {
       components: data.components,
       meta: data.meta || null,
@@ -114,14 +115,14 @@ export class SettingsService {
       create: {
         key: settingKey,
         value,
-        description: `Bot screen layout for: ${key}`,
+        description: `Bot screen layout for: ${key}${storeId ? ` (store: ${storeId})` : ''}`,
       },
       update: { value },
     });
   }
 
-  async deleteBotScreen(key: string) {
-    const settingKey = `bot_screen_${key}`;
+  async deleteBotScreen(key: string, storeId?: string) {
+    const settingKey = storeId ? `bot_screen_${storeId}_${key}` : `bot_screen_${key}`;
     await this.prisma.systemSetting.deleteMany({
       where: { key: settingKey },
     });

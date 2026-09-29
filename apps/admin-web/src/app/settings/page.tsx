@@ -30,12 +30,14 @@ import {
   Coins,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
+import { useStore } from '../../context/StoreContext';
 import TeamManagement from '../../components/TeamManagement';
 import StoreFleetSettings from '../../components/StoreFleetSettings';
 import { SearchableSelect } from '../../components/SearchableSelect';
 import { Modal } from '../../components/Modal';
 
 export default function SettingsPage() {
+  const { activeStore, refreshStores } = useStore();
   const [activeTab, setActiveTab] = useState<
     'branding' | 'wallets' | 'fulfillment' | 'referrals' | 'bot' | 'fleet' | 'team' | 'audit'
   >('branding');
@@ -47,11 +49,11 @@ export default function SettingsPage() {
 
   // Editable settings map
   const [formValues, setFormValues] = useState<Record<string, any>>({
-    store_name: 'Delux Store',
-    store_tagline: 'Premium Authorized Digital Goods & Licenses',
-    welcome_message: 'Welcome to Delux Store! Fast, secure on-demand digital delivery.',
-    support_username: '@thedeluxstorebot',
-    announcement_channel: 'https://t.me/deluxstorenews',
+    store_name: '',
+    store_tagline: '',
+    welcome_message: '',
+    support_username: '',
+    announcement_channel: '',
     terms_text: 'All digital licenses and codes are guaranteed authentic with 30-day warranty.',
     default_fulfillment: 'MANUAL',
     fulfillment_notice: 'Your order is being sourced from our wholesaler. Delivery typically completes in 5-30 minutes.',
@@ -62,7 +64,7 @@ export default function SettingsPage() {
     referral_rate: 10,
     min_referral_payout: 5.0,
     maintenance_mode: false,
-    maintenance_message: 'Delux Store is temporarily undergoing scheduled maintenance. We will be right back!',
+    maintenance_message: 'Our store is temporarily undergoing scheduled maintenance. We will be right back!',
     default_language: 'en',
     minimum_deposit: 1.0,
     usd_to_pkr_rate: 280,
@@ -137,6 +139,12 @@ export default function SettingsPage() {
           map[item.key] = item.value;
         }
       });
+      if (activeStore) {
+        map.store_name = activeStore.name || '';
+        map.store_tagline = activeStore.tagline || '';
+        map.welcome_message = activeStore.welcomeMessage || '';
+        map.support_username = activeStore.supportUsername || (activeStore.botUsername ? `@${activeStore.botUsername.replace('@', '')}` : '');
+      }
       setFormValues(map);
 
       const nMap: Record<string, any> = {};
@@ -167,7 +175,19 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeStore?.id]);
+
+  useEffect(() => {
+    if (activeStore) {
+      setFormValues((prev) => ({
+        ...prev,
+        store_name: activeStore.name || '',
+        store_tagline: activeStore.tagline || '',
+        welcome_message: activeStore.welcomeMessage || '',
+        support_username: activeStore.supportUsername || (activeStore.botUsername ? `@${activeStore.botUsername.replace('@', '')}` : ''),
+      }));
+    }
+  }, [activeStore]);
 
   // Safe save handler for single setting
   const handleSaveSetting = async (key: string, customValue?: any) => {
@@ -200,6 +220,28 @@ export default function SettingsPage() {
   const handleSaveMultiple = async (keys: string[], sectionName: string) => {
     setSavingKey(`all_${sectionName}`);
     try {
+      if (activeStore && (keys.includes('store_name') || sectionName === 'Store Identity')) {
+        await fetchApi(`/admin/stores/${activeStore.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name: formValues.store_name,
+            tagline: formValues.store_tagline,
+            welcomeMessage: formValues.welcome_message,
+          }),
+        });
+        await refreshStores();
+      }
+
+      if (activeStore && keys.includes('support_username')) {
+        await fetchApi(`/admin/stores/${activeStore.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            supportUsername: formValues.support_username,
+          }),
+        });
+        await refreshStores();
+      }
+
       await Promise.all(
         keys.map((k) => {
           let val = formValues[k];
@@ -429,7 +471,7 @@ export default function SettingsPage() {
       const res = await fetchApi('/admin/bot/status');
       setBotStatusResult(res);
       if (res?.online) {
-        showToast(`✓ Bot online! @${res?.bot?.username || 'thedeluxstorebot'} responding in ${res?.latencyMs || 0}ms`);
+        showToast(`✓ Bot online! @${res?.bot?.username || activeStore?.botUsername || 'bot'} responding in ${res?.latencyMs || 0}ms`);
       } else {
         showToast(res?.message || 'Bot response error', 'error');
       }
@@ -438,7 +480,7 @@ export default function SettingsPage() {
         online: true,
         latencyMs: 120,
         message: 'Runtime bot active. Telegram polling initialized.',
-        bot: { username: 'thedeluxstorebot' },
+        bot: { username: activeStore?.botUsername || 'bot' },
       });
       showToast('✓ Bot engine verified active!');
     } finally {
@@ -605,7 +647,7 @@ export default function SettingsPage() {
                     <label className="text-[#201f1e] block mb-1 font-semibold">Support Contact Username / Link</label>
                     <input
                       type="text"
-                      placeholder="@thedeluxstorebot or t.me/..."
+                      placeholder="@yourbot or t.me/..."
                       value={formValues['support_username'] || ''}
                       onChange={(e) => setFormValues({ ...formValues, support_username: e.target.value })}
                       className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4]"
@@ -616,7 +658,7 @@ export default function SettingsPage() {
                     <label className="text-[#201f1e] block mb-1 font-semibold">Official Announcement Channel</label>
                     <input
                       type="text"
-                      placeholder="https://t.me/deluxstorenews"
+                      placeholder="https://t.me/yourchannel"
                       value={formValues['announcement_channel'] || ''}
                       onChange={(e) => setFormValues({ ...formValues, announcement_channel: e.target.value })}
                       className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4] focus:ring-1 focus:ring-[#0078d4]"
@@ -952,7 +994,7 @@ export default function SettingsPage() {
                           </label>
                           <input
                             type="text"
-                            placeholder="e.g. Muhammad Saad or Delux Store"
+                            placeholder="e.g. Store Owner or Business Title"
                             value={edit.accountTitle}
                             onChange={(e) =>
                               setNetworkEdits({
@@ -1670,7 +1712,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-[#201f1e]">Live Bot API Diagnostic</p>
-                      <p className="text-[11px] text-[#605e5c]">Test live handshake with @thedeluxstorebot</p>
+                      <p className="text-[11px] text-[#605e5c]">Test live handshake with @{activeStore?.botUsername ? activeStore.botUsername.replace('@', '') : 'yourbot'}</p>
                     </div>
                     <button
                       onClick={handleTestBot}
@@ -1690,7 +1732,7 @@ export default function SettingsPage() {
                     <div className="p-2.5 rounded-[4px] bg-[#dff6dd] border border-[#a8e5a3] text-[#107c10] text-[11px] flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <Zap className="h-3.5 w-3.5 text-[#107c10]" />
-                        <span>@{botStatusResult?.bot?.username || 'thedeluxstorebot'} is online & responding</span>
+                        <span>@{botStatusResult?.bot?.username || (activeStore?.botUsername ? activeStore.botUsername.replace('@', '') : 'bot')} is online & responding</span>
                       </div>
                       <span className="font-mono font-bold">{botStatusResult?.latencyMs || 0}ms</span>
                     </div>

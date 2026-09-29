@@ -31,6 +31,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useNavigation } from '../../context/NavigationContext';
+import { useStore } from '../../context/StoreContext';
 import { fetchApi } from '../../lib/api';
 import {
   DEFAULT_SCREENS,
@@ -45,6 +46,7 @@ import Inspector from '../../components/bot-builder/Inspector';
 import FlowCanvas from '../../components/bot-builder/FlowCanvas';
 
 export default function BotBuilderPage() {
+  const { activeStore } = useStore();
   const [screensList, setScreensList] = useState<BotScreen[]>(() => DEFAULT_SCREENS);
   const [screensData, setScreensData] = useState<Record<string, BotComponent[]>>(() => {
     const initial: Record<string, BotComponent[]> = {};
@@ -157,7 +159,7 @@ export default function BotBuilderPage() {
       }
     }
     loadScreens();
-  }, []);
+  }, [activeStore?.id]);
 
   const activeScreen = screensList.find((s) => s.key === activeScreenKey) || screensList[0];
   const activeComponents = screensData[activeScreenKey] || [];
@@ -948,7 +950,7 @@ export default function BotBuilderPage() {
               onDelete={handleDeleteComponent}
               onMoveUp={handleMoveUp}
               onMoveDown={handleMoveDown}
-              storeName="Delux Store"
+              storeName={activeStore?.name || 'Your Store'}
             />
           </main>
         </div>

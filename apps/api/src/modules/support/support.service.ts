@@ -16,6 +16,7 @@ export class SupportService {
 
   // Tickets
   async findTickets(params?: {
+    storeId?: string;
     userId?: string;
     status?: TicketStatus;
     page?: number;
@@ -26,6 +27,12 @@ export class SupportService {
     const skip = (page - 1) * limit;
 
     const where: any = {};
+    if (params?.storeId) {
+      where.OR = [
+        { order: { storeId: params.storeId } },
+        { user: { orders: { some: { storeId: params.storeId } } } },
+      ];
+    }
     if (params?.userId) where.userId = params.userId;
     if (params?.status) where.status = params.status;
 
