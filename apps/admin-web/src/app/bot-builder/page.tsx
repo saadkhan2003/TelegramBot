@@ -19,7 +19,10 @@ import {
   LayoutGrid,
   Sliders,
   Check,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
+import { useNavigation } from '../../context/NavigationContext';
 import { fetchApi } from '../../lib/api';
 import {
   DEFAULT_SCREENS,
@@ -44,6 +47,8 @@ export default function BotBuilderPage() {
   const [activeScreenKey, setActiveScreenKey] = useState<string>('welcome');
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [activeLeftTab, setActiveLeftTab] = useState<'elements' | 'inspector'>('elements');
+  const { isSidebarCollapsed, toggleSidebarCollapse } = useNavigation();
+  const [isStudioPanelCollapsed, setIsStudioPanelCollapsed] = useState<boolean>(false);
 
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -534,6 +539,41 @@ export default function BotBuilderPage() {
             <BookOpen className="h-3.5 w-3.5 text-[#605e5c]" />
             <span>Templates</span>
           </button>
+
+          {/* Toggle Main Navigation Sidebar */}
+          <button
+            type="button"
+            onClick={toggleSidebarCollapse}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#d2d0ce] text-xs font-medium transition cursor-pointer shadow-2xs"
+            title={isSidebarCollapsed ? "Expand navigation sidebar (Ctrl+B)" : "Collapse navigation sidebar for maximum width (Ctrl+B)"}
+          >
+            {isSidebarCollapsed ? (
+              <>
+                <PanelLeftOpen className="h-3.5 w-3.5 text-[#0078d4]" />
+                <span className="hidden md:inline font-bold text-[#0078d4]">Expand Menu</span>
+              </>
+            ) : (
+              <>
+                <PanelLeftClose className="h-3.5 w-3.5 text-[#605e5c]" />
+                <span className="hidden md:inline">Collapse Menu</span>
+              </>
+            )}
+          </button>
+
+          {/* Toggle Left Studio Tools Panel */}
+          <button
+            type="button"
+            onClick={() => setIsStudioPanelCollapsed((prev) => !prev)}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium border transition cursor-pointer shadow-2xs ${
+              isStudioPanelCollapsed
+                ? 'bg-[#eff6fc] text-[#0078d4] border-[#c7e0f4] font-bold'
+                : 'bg-white hover:bg-[#f3f2f1] text-[#323130] border-[#d2d0ce]'
+            }`}
+            title={isStudioPanelCollapsed ? "Show Studio Elements & Tools panel" : "Hide Studio Tools to maximize preview canvas"}
+          >
+            <Sliders className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{isStudioPanelCollapsed ? 'Show Tools' : 'Hide Tools'}</span>
+          </button>
         </div>
 
         {/* Right: Actions */}
@@ -577,6 +617,53 @@ export default function BotBuilderPage() {
         </div>
       </header>
 
+      {/* Screen Ribbon: Directly Visible Screens Across Top */}
+      <div className="bg-[#f0f2f5] border-b border-[#e1dfdd] px-4 py-1.5 flex items-center gap-2 overflow-x-auto thin-scrollbar shrink-0">
+        <div className="flex items-center gap-1 text-[11px] font-bold text-[#605e5c] uppercase tracking-wider shrink-0 mr-1">
+          <Layers className="h-3.5 w-3.5 text-[#0078d4]" />
+          <span>Screens:</span>
+        </div>
+        {screensList.map((s) => {
+          const isSelected = s.key === activeScreenKey;
+          const count = (screensData[s.key] || []).length;
+          return (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => {
+                setActiveScreenKey(s.key);
+                setSelectedComponentId(null);
+              }}
+              className={`group flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all shrink-0 cursor-pointer shadow-2xs ${
+                isSelected
+                  ? 'bg-[#0078d4] text-white font-bold shadow-xs'
+                  : 'bg-white hover:bg-[#f3f2f1] text-[#201f1e] border border-[#d2d0ce]'
+              }`}
+            >
+              <span className="text-sm">{s.icon}</span>
+              <span className="font-medium">{s.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  isSelected
+                    ? 'bg-white/25 text-white font-bold'
+                    : 'bg-[#edebe9] text-[#605e5c]'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setIsNewScreenModalOpen(true)}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white hover:bg-[#eff6fc] text-[#0078d4] border border-dashed border-[#0078d4]/40 hover:border-[#0078d4] text-xs font-semibold transition shrink-0 cursor-pointer"
+        >
+          <Plus className="h-3 w-3" />
+          <span>Add Screen</span>
+        </button>
+      </div>
+
       {/* Notification banner */}
       {statusMessage && (
         <div
@@ -605,9 +692,28 @@ export default function BotBuilderPage() {
       )}
 
       {/* 2-Zone Spacious Studio (Elementor Architecture: Left Tool Panel + Spacious Workspace) */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Zone 1: Unified Left Studio Panel (320px) holding Elements & Inspector */}
-        <aside className="w-80 sm:w-[340px] bg-white border-r border-[#edebe9] flex flex-col h-full shrink-0 shadow-xs z-20">
+      <div className="flex-1 flex overflow-hidden min-h-0 relative">
+        {/* Floating Re-open Button when Left Studio Panel is collapsed */}
+        {isStudioPanelCollapsed && (
+          <button
+            type="button"
+            onClick={() => setIsStudioPanelCollapsed(false)}
+            className="absolute left-3 top-3 z-30 flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#eff6fc] text-[#0078d4] font-bold text-xs rounded-lg shadow-md border border-[#c7e0f4] cursor-pointer transition animate-in fade-in"
+            title="Open elements & tools panel"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+            <span>Show Elements &amp; Inspector</span>
+          </button>
+        )}
+
+        {/* Zone 1: Unified Left Studio Panel holding Elements & Inspector */}
+        <aside
+          className={`bg-white border-r border-[#edebe9] flex flex-col h-full shrink-0 shadow-xs z-20 transition-all duration-300 ease-in-out ${
+            isStudioPanelCollapsed
+              ? 'w-0 opacity-0 pointer-events-none border-r-0 overflow-hidden'
+              : 'w-80 sm:w-[340px] opacity-100'
+          }`}
+        >
           {/* Sub-tabs header: [+ Elements] vs [⚙ Edit Block] */}
           <div className="bg-[#faf9f8] border-b border-[#edebe9] p-1.5 flex items-center gap-1 shrink-0">
             <button
@@ -636,6 +742,14 @@ export default function BotBuilderPage() {
               {selectedComponent && (
                 <span className="w-2 h-2 rounded-full bg-[#0078d4] absolute top-1 right-2" />
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsStudioPanelCollapsed(true)}
+              className="p-1 rounded text-[#605e5c] hover:text-[#201f1e] hover:bg-[#edebe9] transition cursor-pointer ml-0.5"
+              title="Collapse studio panel"
+            >
+              <PanelLeftClose className="h-4 w-4" />
             </button>
           </div>
 

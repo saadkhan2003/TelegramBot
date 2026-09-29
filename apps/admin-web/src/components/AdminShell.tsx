@@ -8,8 +8,29 @@ import Header from './Header';
 import MobileBottomBar from './MobileBottomBar';
 import PwaProvider from './PwaProvider';
 import { StoreProvider } from '../context/StoreContext';
-import { NavigationProvider } from '../context/NavigationContext';
+import { NavigationProvider, useNavigation } from '../context/NavigationContext';
 import { Loader2, ShieldCheck, Lock } from 'lucide-react';
+
+function ShellContent({ children }: { children: React.ReactNode }) {
+  const { isSidebarCollapsed } = useNavigation();
+
+  return (
+    <div className="flex min-h-screen w-full relative">
+      <Sidebar />
+      <div
+        className={`flex-1 flex flex-col min-h-screen w-full pb-16 lg:pb-0 transition-all duration-300 ease-in-out ${
+          isSidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'
+        }`}
+      >
+        <Header />
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto">
+          {children}
+        </main>
+      </div>
+      <MobileBottomBar />
+    </div>
+  );
+}
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -116,16 +137,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     <StoreProvider>
       <NavigationProvider>
         <PwaProvider>
-          <div className="flex min-h-screen w-full relative">
-            <Sidebar />
-            <div className="flex-1 lg:pl-64 flex flex-col min-h-screen w-full pb-16 lg:pb-0">
-              <Header />
-              <main className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto">
-                {children}
-              </main>
-            </div>
-            <MobileBottomBar />
-          </div>
+          <ShellContent>{children}</ShellContent>
         </PwaProvider>
       </NavigationProvider>
     </StoreProvider>

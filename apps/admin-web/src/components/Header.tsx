@@ -24,8 +24,9 @@ import {
   Package,
   Layers,
   ExternalLink,
-  Command,
   Wallet,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 import { useNavigation } from '../context/NavigationContext';
@@ -49,7 +50,7 @@ const routeDetails: Record<string, { section: string; title: string }> = {
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { toggleMobileMenu } = useNavigation();
+  const { toggleMobileMenu, isSidebarCollapsed, toggleSidebarCollapse } = useNavigation();
   const { user, logout } = useAuth();
 
   // Dropdown & Modal states
@@ -186,6 +187,21 @@ export default function Header() {
         <span className="sm:hidden text-xs font-bold text-[#0f172a] truncate max-w-[85px] xs:max-w-[125px]">
           {currentRoute.title}
         </span>
+
+        {/* Desktop Sidebar Collapse Toggle */}
+        <button
+          type="button"
+          onClick={toggleSidebarCollapse}
+          className="hidden lg:flex p-1.5 rounded-[5px] text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition cursor-pointer"
+          title={isSidebarCollapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
+          aria-label="Toggle sidebar"
+        >
+          {isSidebarCollapsed ? (
+            <PanelLeftOpen className="h-4.5 w-4.5" />
+          ) : (
+            <PanelLeftClose className="h-4.5 w-4.5" />
+          )}
+        </button>
 
         {/* Desktop Breadcrumb Hierarchy */}
         <div className="hidden sm:flex items-center gap-2 text-xs">
