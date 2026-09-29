@@ -1,12 +1,28 @@
 'use client';
 
 import React from 'react';
-import { ExternalLink, Zap, ArrowRight, Info, CheckCircle2, AlertTriangle, AlertOctagon } from 'lucide-react';
+import {
+  ExternalLink,
+  Zap,
+  ArrowRight,
+  Info,
+  CheckCircle2,
+  AlertTriangle,
+  AlertOctagon,
+  ArrowLeft,
+  MoreVertical,
+  Wifi,
+  Battery,
+  Signal,
+} from 'lucide-react';
 import { BotComponent, BotButton } from '../../lib/botBuilderTypes';
 
 interface TelegramPreviewProps {
   components: BotComponent[];
   storeName?: string;
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
+  showDeviceFrame?: boolean;
 }
 
 const SAMPLE_VARS: Record<string, string> = {
@@ -53,7 +69,6 @@ function interpolate(text: string, vars: Record<string, string>): string {
 }
 
 function renderText(text: string): React.ReactNode[] {
-  // Parse *bold*, _italic_, `mono`, and ||spoiler||
   const parts = text.split(/(\*[^*]+\*|_[^_]+_|`[^`]+`|\|\|[^|]+\|\|)/g);
   return parts.map((part, i) => {
     if (part.startsWith('*') && part.endsWith('*')) {
@@ -110,7 +125,13 @@ function renderButtonIcon(btn: BotButton) {
   return null;
 }
 
-export default function TelegramPreview({ components, storeName = 'Delux Store' }: TelegramPreviewProps) {
+export default function TelegramPreview({
+  components,
+  storeName = 'Delux Store',
+  selectedId,
+  onSelect,
+  showDeviceFrame = true,
+}: TelegramPreviewProps) {
   const vars = { ...SAMPLE_VARS, storeName };
 
   const renderComponent = (comp: BotComponent) => {
@@ -131,7 +152,7 @@ export default function TelegramPreview({ components, storeName = 'Delux Store' 
               <img
                 src={comp.imageUrl}
                 alt="Banner preview"
-                className="w-full max-h-40 object-cover"
+                className="w-full max-h-44 object-cover"
                 onError={(e) => {
                   (e.target as any).style.display = 'none';
                 }}
@@ -253,7 +274,7 @@ export default function TelegramPreview({ components, storeName = 'Delux Store' 
 
       case 'faq_item': {
         return (
-          <div className="bg-[#242f3d] rounded p-2 border border-white/5 space-y-1">
+          <div className="bg-[#242f3d] rounded p-2.5 border border-white/5 space-y-1">
             <div className="text-[12px] font-bold text-[#6bc5f8] flex items-center gap-1">
               <span>❓</span>
               <span>{interpolate(comp.question || 'Question', vars)}</span>
@@ -267,13 +288,13 @@ export default function TelegramPreview({ components, storeName = 'Delux Store' 
 
       case 'social_links': {
         return (
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {(comp.links || []).map((link) => (
               <div
                 key={link.id}
-                className="bg-[#242f3d] hover:bg-[#2c3847] px-2.5 py-1.5 rounded flex items-center justify-between text-[11px] text-white/90 border border-white/5"
+                className="bg-[#242f3d] hover:bg-[#2c3847] px-3 py-2 rounded-lg flex items-center justify-between text-[11.5px] text-white/90 border border-white/5 shadow-xs"
               >
-                <span className="flex items-center gap-1.5 font-medium">
+                <span className="flex items-center gap-2 font-medium">
                   <span>{link.emoji || '🔗'}</span>
                   <span>{interpolate(link.label || link.platform, vars)}</span>
                 </span>
@@ -287,7 +308,7 @@ export default function TelegramPreview({ components, storeName = 'Delux Store' 
       case 'button':
         return (
           <div className="pt-1">
-            <div className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2 px-3 rounded-lg text-center cursor-pointer transition select-none flex items-center justify-center gap-1.5 shadow-sm">
+            <div className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2.5 px-3 rounded-lg text-center cursor-pointer transition select-none flex items-center justify-center gap-1.5 shadow-xs border border-white/5">
               <span>{interpolate(comp.label || 'Action Button', vars)}</span>
               {renderButtonIcon(comp as any)}
             </div>
@@ -301,7 +322,7 @@ export default function TelegramPreview({ components, storeName = 'Delux Store' 
             {btns.map((btn) => (
               <div
                 key={btn.id}
-                className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2 px-2 rounded-lg text-center cursor-pointer transition select-none truncate flex items-center justify-center gap-1 shadow-sm"
+                className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2.5 px-2 rounded-lg text-center cursor-pointer transition select-none truncate flex items-center justify-center gap-1 shadow-xs border border-white/5"
               >
                 <span className="truncate">{interpolate(btn.label, vars)}</span>
                 {renderButtonIcon(btn)}
@@ -320,7 +341,7 @@ export default function TelegramPreview({ components, storeName = 'Delux Store' 
                 {row.map((btn) => (
                   <div
                     key={btn.id}
-                    className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2 px-2 rounded-lg text-center cursor-pointer transition select-none truncate flex items-center justify-center gap-1 shadow-sm"
+                    className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2.5 px-2 rounded-lg text-center cursor-pointer transition select-none truncate flex items-center justify-center gap-1 shadow-xs border border-white/5"
                   >
                     <span className="truncate">{interpolate(btn.label, vars)}</span>
                     {renderButtonIcon(btn)}
@@ -337,41 +358,110 @@ export default function TelegramPreview({ components, storeName = 'Delux Store' 
     }
   };
 
-  return (
-    <div className="w-full select-none font-sans drop-shadow-md">
-      {/* Telegram Message Header */}
-      <div className="bg-[#17212b] rounded-t-xl px-3.5 py-2.5 flex items-center gap-2 border-b border-white/10">
-        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#2a9ef4] to-[#1281db] flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-xs">
-          🤖
+  const bubbleContent = (
+    <div className="bg-[#182533] rounded-2xl p-3.5 space-y-2.5 text-white/90 shadow-md border border-white/5">
+      {components.length === 0 ? (
+        <div className="text-center py-10 text-xs text-white/30 italic">
+          Canvas is empty. Click elements on the left to start building.
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold text-white truncate flex items-center gap-1">
-            <span>{storeName}</span>
-            <span className="text-[10px] text-[#5288c1] font-normal">bot</span>
-          </p>
-          <p className="text-[10px] text-[#8a8886] truncate">verified automated assistant</p>
+      ) : (
+        components.map((comp) => {
+          const isSelected = comp.id === selectedId;
+          return (
+            <div
+              key={comp.id}
+              onClick={(e) => {
+                if (onSelect) {
+                  e.stopPropagation();
+                  onSelect(comp.id);
+                }
+              }}
+              className={`rounded-lg p-1.5 transition cursor-pointer relative group ${
+                isSelected
+                  ? 'ring-2 ring-[#0078d4] bg-white/5'
+                  : 'hover:bg-white/[0.04] hover:ring-1 hover:ring-white/20'
+              }`}
+            >
+              {renderComponent(comp)}
+              {isSelected && (
+                <span className="absolute -top-2 right-2 bg-[#0078d4] text-white text-[9px] font-bold px-1.5 py-0.2 rounded shadow-xs">
+                  Active
+                </span>
+              )}
+            </div>
+          );
+        })
+      )}
+
+      {/* Timestamp */}
+      <div className="text-right text-[10px] text-white/40 pt-1 font-mono">
+        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ✓✓
+      </div>
+    </div>
+  );
+
+  if (!showDeviceFrame) {
+    return (
+      <div className="w-full select-none font-sans">
+        <div className="bg-[#0e1621] p-4 rounded-xl border border-white/10 shadow-lg">
+          {bubbleContent}
         </div>
       </div>
+    );
+  }
 
-      {/* Telegram Message Bubble */}
-      <div className="bg-[#0e1621] p-3 rounded-b-xl border-x border-b border-white/10 space-y-2">
-        <div className="bg-[#182533] rounded-lg p-3 space-y-2.5 max-w-full text-white/90 shadow-inner">
-          {components.length === 0 ? (
-            <div className="text-center py-6 text-xs text-white/30 italic">
-              Canvas is empty. Add components to preview message bubble.
-            </div>
-          ) : (
-            components.map((comp) => (
-              <div key={comp.id} className="first:pt-0">
-                {renderComponent(comp)}
-              </div>
-            ))
-          )}
-
-          {/* Timestamp */}
-          <div className="text-right text-[10px] text-white/40 pt-1">
-            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ✓✓
+  // Realistic Smartphone Device Chassis
+  return (
+    <div className="w-[360px] sm:w-[380px] bg-[#1a1c22] rounded-[44px] p-3 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)] border-4 border-[#2f323a] select-none mx-auto">
+      {/* Phone Screen Glass */}
+      <div className="bg-[#0e1621] rounded-[36px] overflow-hidden flex flex-col h-[650px] relative border border-black/40">
+        {/* Dynamic Island / Speaker Pill */}
+        <div className="pt-2 px-6 flex items-center justify-between text-white/70 text-[11px] shrink-0 z-20">
+          <span className="font-semibold text-xs text-white">9:41</span>
+          <div className="w-20 h-4 bg-black rounded-full mx-auto shadow-inner" />
+          <div className="flex items-center gap-1.5">
+            <Signal className="h-3 w-3" />
+            <Wifi className="h-3 w-3" />
+            <Battery className="h-3.5 w-3.5" />
           </div>
+        </div>
+
+        {/* Telegram App Navigation Bar */}
+        <div className="bg-[#17212b] px-3.5 py-2.5 flex items-center justify-between border-b border-white/10 shrink-0 z-10">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <ArrowLeft className="h-4 w-4 text-[#5288c1] cursor-pointer" />
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#2a9ef4] to-[#1281db] flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-xs">
+              🤖
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate flex items-center gap-1">
+                <span>{storeName}</span>
+                <span className="text-[10px] text-[#5288c1] font-normal">bot</span>
+              </p>
+              <p className="text-[10px] text-[#8a8886] truncate">bot · online</p>
+            </div>
+          </div>
+          <MoreVertical className="h-4 w-4 text-white/60 cursor-pointer" />
+        </div>
+
+        {/* Chat Message Scrollable Viewport */}
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-3 bg-[#0e1621] scrollbar-thin">
+          {/* Date separator badge */}
+          <div className="flex justify-center">
+            <span className="px-2.5 py-0.5 rounded-full bg-black/40 text-white/60 text-[10px] font-medium backdrop-blur-xs">
+              Today
+            </span>
+          </div>
+
+          {bubbleContent}
+        </div>
+
+        {/* Bottom Telegram Mini Bar */}
+        <div className="bg-[#17212b] px-4 py-2.5 border-t border-white/10 flex items-center justify-between text-xs text-[#5288c1] font-medium shrink-0">
+          <div className="flex items-center gap-2 text-white/50 text-[11px]">
+            <span>⚡ Menu</span>
+          </div>
+          <span className="text-white/40 text-[11px]">Tap any component to edit</span>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Save,
   RotateCcw,
@@ -15,6 +15,10 @@ import {
   X,
   Layers,
   ChevronDown,
+  ArrowLeft,
+  LayoutGrid,
+  Sliders,
+  Check,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
 import {
@@ -39,6 +43,8 @@ export default function BotBuilderPage() {
 
   const [activeScreenKey, setActiveScreenKey] = useState<string>('welcome');
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+  const [activeLeftTab, setActiveLeftTab] = useState<'elements' | 'inspector'>('elements');
+
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -46,6 +52,11 @@ export default function BotBuilderPage() {
     type: 'success' | 'error';
     text: string;
   } | null>(null);
+
+  // Screen Switcher Dropdown State
+  const [isScreenDropdownOpen, setIsScreenDropdownOpen] = useState(false);
+  const [screenSearch, setScreenSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // New Screen Modal State
   const [isNewScreenModalOpen, setIsNewScreenModalOpen] = useState(false);
@@ -55,8 +66,19 @@ export default function BotBuilderPage() {
   const [newScreenCategory, setNewScreenCategory] = useState<BotScreen['category']>('custom');
   const [newScreenTemplate, setNewScreenTemplate] = useState('empty');
 
-  // Screen Search
-  const [screenSearch, setScreenSearch] = useState('');
+  // Templates Modal State
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsScreenDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Load existing saved screens from API
   useEffect(() => {
@@ -79,7 +101,6 @@ export default function BotBuilderPage() {
             if (val && Array.isArray(val.components)) {
               loadedData[key] = val.components;
 
-              // If it's a custom screen not in DEFAULT_SCREENS, add it to screensList
               const existingIdx = loadedScreens.findIndex((s) => s.key === key);
               if (existingIdx >= 0) {
                 if (val.meta?.label) loadedScreens[existingIdx].label = val.meta.label;
@@ -115,12 +136,18 @@ export default function BotBuilderPage() {
   const selectedComponent =
     activeComponents.find((c) => c.id === selectedComponentId) || null;
 
-  // Filtered screens for switcher
+  // Filter screens in dropdown
   const filteredScreens = screensList.filter(
     (s) =>
       s.label.toLowerCase().includes(screenSearch.toLowerCase()) ||
       s.key.toLowerCase().includes(screenSearch.toLowerCase()),
   );
+
+  // When a component is selected, auto-switch left tab to inspector
+  const handleSelectComponent = (id: string) => {
+    setSelectedComponentId(id);
+    setActiveLeftTab('inspector');
+  };
 
   // Save current active screen layout
   const handleSave = async () => {
@@ -145,7 +172,7 @@ export default function BotBuilderPage() {
       setIsDirty(false);
       setStatusMessage({
         type: 'success',
-        text: `✓ Screen "${activeScreen.label}" saved and live on Telegram!`,
+        text: `✓ Screen "${activeScreen.label}" published live to Telegram!`,
       });
 
       setTimeout(() => setStatusMessage(null), 4000);
@@ -178,7 +205,6 @@ export default function BotBuilderPage() {
       return;
     }
 
-    // Determine starting components
     let initialComps: BotComponent[] = [];
     if (newScreenTemplate !== 'empty') {
       const templateScreen = DEFAULT_SCREENS.find((s) => s.key === newScreenTemplate);
@@ -226,7 +252,6 @@ export default function BotBuilderPage() {
     setIsDirty(true);
     setIsNewScreenModalOpen(false);
 
-    // Reset modal form
     setNewScreenKey('');
     setNewScreenLabel('');
     setNewScreenIcon('✨');
@@ -234,7 +259,7 @@ export default function BotBuilderPage() {
 
     setStatusMessage({
       type: 'success',
-      text: `Created new screen "${newScreenObj.label}"! Click "Save Layout" to publish to Telegram.`,
+      text: `Created new screen "${newScreenObj.label}"! Click "Save Layout" to publish.`,
     });
     setTimeout(() => setStatusMessage(null), 4000);
   };
@@ -304,6 +329,31 @@ export default function BotBuilderPage() {
     }
   };
 
+  // Apply a template to active screen
+  const handleApplyTemplate = (templateKey: string) => {
+    const t = DEFAULT_SCREENS.find((s) => s.key === templateKey);
+    if (!t) return;
+    if (
+      window.confirm(
+        `Load the "${t.label}" layout into "${activeScreen.label}"? This will replace current components.`,
+      )
+    ) {
+      const cloned = JSON.parse(JSON.stringify(t.components));
+      setScreensData((prev) => ({
+        ...prev,
+        [activeScreenKey]: cloned,
+      }));
+      setSelectedComponentId(null);
+      setIsDirty(true);
+      setIsTemplatesModalOpen(false);
+      setStatusMessage({
+        type: 'success',
+        text: `Loaded "${t.label}" template. Click "Save Layout" to publish.`,
+      });
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
+  };
+
   // Add component
   const handleAddComponent = (newComp: BotComponent) => {
     setScreensData((prev) => ({
@@ -311,6 +361,7 @@ export default function BotBuilderPage() {
       [activeScreenKey]: [...(prev[activeScreenKey] || []), newComp],
     }));
     setSelectedComponentId(newComp.id);
+    setActiveLeftTab('inspector');
     setIsDirty(true);
   };
 
@@ -333,6 +384,7 @@ export default function BotBuilderPage() {
     }));
     if (selectedComponentId === id) {
       setSelectedComponentId(null);
+      setActiveLeftTab('elements');
     }
     setIsDirty(true);
   };
@@ -365,84 +417,131 @@ export default function BotBuilderPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex flex-col bg-white overflow-hidden select-none">
-      {/* Top Application Bar */}
-      <header className="bg-white border-b border-[#edebe9] px-4 py-2.5 flex items-center justify-between shrink-0 z-10 shadow-xs">
-        {/* Left: Brand + Screen Switcher */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-md bg-gradient-to-tr from-[#0078d4] to-[#2b88d8] text-white flex items-center justify-center shadow-xs">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <div className="hidden lg:block">
-              <h1 className="text-sm font-bold text-[#201f1e] leading-none">Universal Bot Studio</h1>
-              <p className="text-[11px] text-[#605e5c] leading-tight mt-0.5">
-                Visual Flow & Message Builder for Telegram
-              </p>
-            </div>
-          </div>
+    <div className="-m-3.5 sm:-m-6 lg:-m-8 h-[calc(100vh-4rem)] flex flex-col bg-[#f8f9fa] overflow-hidden select-none font-sans">
+      {/* Elementor-Style Studio Top Bar */}
+      <header className="bg-white border-b border-[#edebe9] px-4 py-2 flex items-center justify-between shrink-0 z-30 shadow-xs">
+        {/* Left: Screen Selector Dropdown + Actions */}
+        <div className="flex items-center gap-3">
+          {/* Active Screen Dropdown Trigger */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsScreenDropdownOpen(!isScreenDropdownOpen)}
+              className="flex items-center gap-2.5 px-3 py-1.5 bg-[#f3f2f1] hover:bg-[#edebe9] rounded-md font-semibold text-xs border border-[#d2d0ce] transition cursor-pointer shadow-xs"
+            >
+              <span className="text-base">{activeScreen.icon}</span>
+              <span className="font-bold text-[#201f1e]">{activeScreen.label}</span>
+              <span className="text-[10px] text-[#605e5c] font-mono bg-white px-1.5 py-0.5 rounded border border-[#edebe9] hidden sm:inline">
+                {activeScreen.key}
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 text-[#605e5c] ml-1" />
+            </button>
 
-          <div className="h-6 w-px bg-[#edebe9] hidden sm:block" />
+            {/* Dropdown Menu */}
+            {isScreenDropdownOpen && (
+              <div className="absolute left-0 top-full mt-1.5 w-72 bg-white rounded-lg shadow-xl border border-[#edebe9] py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                {/* Search */}
+                <div className="px-3 pb-2 border-b border-[#edebe9]">
+                  <div className="relative">
+                    <Search className="h-3.5 w-3.5 text-[#8a8886] absolute left-2.5 top-2.5" />
+                    <input
+                      type="text"
+                      placeholder="Search screens..."
+                      value={screenSearch}
+                      onChange={(e) => setScreenSearch(e.target.value)}
+                      className="w-full pl-8 pr-2 py-1 text-xs border border-[#d2d0ce] rounded bg-[#faf9f8] focus:outline-none focus:border-[#0078d4]"
+                    />
+                  </div>
+                </div>
 
-          {/* Screen Tabs with Horizontal Scroll & Search */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-xl scrollbar-none">
-            {filteredScreens.map((screen) => {
-              const isActive = screen.key === activeScreenKey;
-              return (
-                <div key={screen.key} className="relative group shrink-0">
+                {/* Screens List */}
+                <div className="max-h-64 overflow-y-auto p-1 space-y-0.5">
+                  {filteredScreens.map((s) => {
+                    const isSelected = s.key === activeScreenKey;
+                    return (
+                      <div
+                        key={s.key}
+                        onClick={() => {
+                          setActiveScreenKey(s.key);
+                          setSelectedComponentId(null);
+                          setIsScreenDropdownOpen(false);
+                        }}
+                        className={`flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer transition text-xs ${
+                          isSelected ? 'bg-[#eff6fc] text-[#0078d4] font-bold' : 'hover:bg-[#f3f2f1] text-[#201f1e]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span>{s.icon}</span>
+                          <span className="truncate">{s.label}</span>
+                          {s.isCustom && (
+                            <span className="text-[9px] bg-[#f3f2f1] text-[#605e5c] px-1 rounded">custom</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {isSelected && <Check className="h-3.5 w-3.5 text-[#0078d4]" />}
+                          {s.isCustom && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteScreen(s);
+                              }}
+                              className="text-[#a19f9d] hover:text-[#a80000] p-1"
+                              title="Delete screen"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Dropdown Footer: + New Screen */}
+                <div className="px-2 pt-1.5 border-t border-[#edebe9]">
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveScreenKey(screen.key);
-                      setSelectedComponentId(null);
+                      setIsScreenDropdownOpen(false);
+                      setIsNewScreenModalOpen(true);
                     }}
-                    className={`px-3 py-1.5 rounded-[4px] text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
-                      isActive
-                        ? 'bg-[#0078d4] text-white shadow-xs'
-                        : 'text-[#605e5c] hover:text-[#201f1e] hover:bg-[#f3f2f1] border border-transparent'
-                    }`}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-[#eff6fc] hover:bg-[#ddeeff] text-[#0078d4] rounded text-xs font-bold transition cursor-pointer"
                   >
-                    <span>{screen.icon}</span>
-                    <span>{screen.label}</span>
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Create New Screen</span>
                   </button>
-
-                  {/* Delete button for custom screens */}
-                  {screen.isCustom && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteScreen(screen);
-                      }}
-                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#d83b01] text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-xs cursor-pointer"
-                      title="Delete screen"
-                    >
-                      ×
-                    </button>
-                  )}
                 </div>
-              );
-            })}
-
-            {/* + Add New Screen Button */}
-            <button
-              type="button"
-              onClick={() => setIsNewScreenModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-[4px] border border-dashed border-[#0078d4] text-[#0078d4] bg-[#eff6fc] hover:bg-[#ddeeff] text-xs font-bold transition cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 shadow-xs"
-              title="Create a new custom bot screen"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>New Screen</span>
-            </button>
+              </div>
+            )}
           </div>
+
+          {/* Quick Buttons */}
+          <button
+            type="button"
+            onClick={() => setIsNewScreenModalOpen(true)}
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded bg-white hover:bg-[#f3f2f1] text-[#0078d4] border border-[#c7e0f4] text-xs font-bold transition cursor-pointer shadow-2xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>New Screen</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsTemplatesModalOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#d2d0ce] text-xs font-medium transition cursor-pointer shadow-2xs"
+          >
+            <BookOpen className="h-3.5 w-3.5 text-[#605e5c]" />
+            <span>Templates</span>
+          </button>
         </div>
 
-        {/* Right: Actions (Status, Reset, Save) */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2">
           {isDirty && (
-            <span className="hidden xl:flex items-center gap-1 text-[11px] text-[#d83b01] font-semibold bg-[#fdf3f2] px-2.5 py-1 rounded border border-[#fad8d6]">
+            <span className="hidden md:flex items-center gap-1.5 text-[11px] text-[#d83b01] font-semibold bg-[#fdf3f2] px-2.5 py-1 rounded border border-[#fad8d6]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#d83b01] animate-pulse" />
-              Unsaved Changes
+              Unsaved
             </span>
           )}
 
@@ -450,8 +549,8 @@ export default function BotBuilderPage() {
             type="button"
             onClick={handleResetToDefault}
             disabled={isSaving}
-            className="px-2.5 py-1.5 rounded-[4px] border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#323130] text-xs font-medium transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-            title="Reset active screen to template"
+            className="px-2.5 py-1.5 rounded border border-[#d2d0ce] bg-white hover:bg-[#f3f2f1] text-[#323130] text-xs font-medium transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
+            title="Reset to default preset"
           >
             <RotateCcw className="h-3.5 w-3.5 text-[#605e5c]" />
             <span className="hidden sm:inline">Reset</span>
@@ -461,7 +560,7 @@ export default function BotBuilderPage() {
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="px-3.5 py-1.5 rounded-[4px] bg-[#0078d4] hover:bg-[#106ebe] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+            className="px-4 py-1.5 rounded bg-[#0078d4] hover:bg-[#106ebe] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
           >
             {isSaving ? (
               <>
@@ -478,10 +577,10 @@ export default function BotBuilderPage() {
         </div>
       </header>
 
-      {/* Notification banner if any */}
+      {/* Notification banner */}
       {statusMessage && (
         <div
-          className={`px-4 py-2 text-xs flex items-center justify-between shrink-0 transition-all ${
+          className={`px-4 py-1.5 text-xs flex items-center justify-between shrink-0 transition-all ${
             statusMessage.type === 'success'
               ? 'bg-[#dff6dd] text-[#107c41] border-b border-[#a8e5a3]'
               : 'bg-[#fdf3f2] text-[#a80000] border-b border-[#fad8d6]'
@@ -505,38 +604,90 @@ export default function BotBuilderPage() {
         </div>
       )}
 
-      {/* 3-Panel Elementor Layout */}
+      {/* 2-Zone Spacious Studio (Elementor Architecture: Left Tool Panel + Spacious Workspace) */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Left Panel: Component Palette */}
-        <ComponentPalette onAdd={handleAddComponent} />
+        {/* Zone 1: Unified Left Studio Panel (320px) holding Elements & Inspector */}
+        <aside className="w-80 sm:w-[340px] bg-white border-r border-[#edebe9] flex flex-col h-full shrink-0 shadow-xs z-20">
+          {/* Sub-tabs header: [+ Elements] vs [⚙ Edit Block] */}
+          <div className="bg-[#faf9f8] border-b border-[#edebe9] p-1.5 flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveLeftTab('elements')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded transition cursor-pointer ${
+                activeLeftTab === 'elements'
+                  ? 'bg-white text-[#0078d4] shadow-xs'
+                  : 'text-[#605e5c] hover:text-[#201f1e]'
+              }`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span>+ Elements</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveLeftTab('inspector')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded transition cursor-pointer relative ${
+                activeLeftTab === 'inspector'
+                  ? 'bg-white text-[#0078d4] shadow-xs'
+                  : 'text-[#605e5c] hover:text-[#201f1e]'
+              }`}
+            >
+              <Sliders className="h-3.5 w-3.5" />
+              <span>⚙ Edit Block</span>
+              {selectedComponent && (
+                <span className="w-2 h-2 rounded-full bg-[#0078d4] absolute top-1 right-2" />
+              )}
+            </button>
+          </div>
 
-        {/* Center Panel: Interactive Drag-and-Drop Canvas & Telegram Live Preview */}
-        <Canvas
-          components={activeComponents}
-          selectedId={selectedComponentId}
-          onSelect={setSelectedComponentId}
-          onReorder={handleReorder}
-          onDelete={handleDeleteComponent}
-          onMoveUp={handleMoveUp}
-          onMoveDown={handleMoveDown}
-          storeName="Delux Store"
-        />
-
-        {/* Right Panel: Inspector Properties Panel */}
-        <aside className="w-72 sm:w-80 bg-white border-l border-[#edebe9] flex flex-col h-full shrink-0 shadow-xs">
-          <Inspector
-            component={selectedComponent}
-            availableScreens={screensList.map((s) => ({ key: s.key, label: s.label, icon: s.icon }))}
-            onChange={handleUpdateComponent}
-            onDelete={() => selectedComponentId && handleDeleteComponent(selectedComponentId)}
-          />
+          {/* Panel Content */}
+          <div className="flex-1 overflow-hidden">
+            {activeLeftTab === 'elements' ? (
+              <ComponentPalette onAdd={handleAddComponent} />
+            ) : (
+              <div className="h-full flex flex-col">
+                <div className="px-3 py-1.5 bg-[#eff6fc] border-b border-[#c7e0f4] flex items-center justify-between text-xs shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setActiveLeftTab('elements')}
+                    className="text-[#0078d4] hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                  >
+                    <ArrowLeft className="h-3 w-3" />
+                    <span>Back to Elements</span>
+                  </button>
+                  <span className="text-[10px] text-[#605e5c] font-medium">Click any block to switch</span>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <Inspector
+                    component={selectedComponent}
+                    availableScreens={screensList.map((s) => ({ key: s.key, label: s.label, icon: s.icon }))}
+                    onChange={handleUpdateComponent}
+                    onDelete={() => selectedComponentId && handleDeleteComponent(selectedComponentId)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </aside>
+
+        {/* Zone 2: Spacious Main Workspace (Flex-1) */}
+        <main className="flex-1 flex flex-col h-full bg-[#f0f2f5] overflow-hidden min-w-0">
+          <Canvas
+            components={activeComponents}
+            selectedId={selectedComponentId}
+            onSelect={handleSelectComponent}
+            onReorder={handleReorder}
+            onDelete={handleDeleteComponent}
+            onMoveUp={handleMoveUp}
+            onMoveDown={handleMoveDown}
+            storeName="Delux Store"
+          />
+        </main>
       </div>
 
       {/* Create New Screen Modal */}
       {isNewScreenModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full border border-[#edebe9] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-[#edebe9] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 border-b border-[#edebe9] flex items-center justify-between bg-[#faf9f8]">
               <div className="flex items-center gap-2">
                 <span className="text-xl">✨</span>
@@ -602,7 +753,7 @@ export default function BotBuilderPage() {
                   className="w-full text-xs font-mono p-2 border border-[#d2d0ce] rounded bg-[#faf9f8]"
                 />
                 <span className="text-[10px] text-[#8a8886]">
-                  Action code for buttons: <code className="bg-[#f3f2f1] px-1 rounded">screen_{newScreenKey || 'id'}</code>
+                  Button jump code: <code className="bg-[#f3f2f1] px-1 rounded">screen_{newScreenKey || 'id'}</code>
                 </span>
               </div>
 
@@ -653,6 +804,66 @@ export default function BotBuilderPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Templates Library Modal */}
+      {isTemplatesModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full border border-[#edebe9] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-4 border-b border-[#edebe9] flex items-center justify-between bg-[#faf9f8]">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-[#0078d4]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#201f1e]">Industry Template Presets</h3>
+                  <p className="text-[11px] text-[#605e5c]">Load professionally crafted layouts for any bot use case</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTemplatesModalOpen(false)}
+                className="text-[#605e5c] hover:text-[#201f1e] p-1"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+              {DEFAULT_SCREENS.map((preset) => (
+                <div
+                  key={preset.key}
+                  className="border border-[#edebe9] hover:border-[#0078d4] rounded-lg p-3 bg-white hover:bg-[#f3f9fd] transition cursor-pointer flex flex-col justify-between group"
+                  onClick={() => handleApplyTemplate(preset.key)}
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">{preset.icon}</span>
+                      <h4 className="text-xs font-bold text-[#201f1e] group-hover:text-[#0078d4]">
+                        {preset.label}
+                      </h4>
+                    </div>
+                    <p className="text-[11px] text-[#605e5c] leading-relaxed line-clamp-2">
+                      {preset.description}
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-[#edebe9] flex items-center justify-between text-[10px] text-[#8a8886]">
+                    <span>{preset.components.length} components</span>
+                    <span className="text-[#0078d4] font-bold group-hover:underline">Apply Template →</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 bg-[#faf9f8] border-t border-[#edebe9] flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsTemplatesModalOpen(false)}
+                className="px-4 py-1.5 text-xs text-[#605e5c] hover:bg-[#f3f2f1] rounded font-medium cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

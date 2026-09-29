@@ -399,14 +399,23 @@ export default function Canvas({
         {(viewMode === 'split' || viewMode === 'preview') && (
           <div
             className={`h-full overflow-y-auto p-4 flex flex-col items-center justify-start bg-[#17212b]/5 ${
-              viewMode === 'split' ? 'w-full lg:w-1/2' : 'w-full'
+              viewMode === 'split' ? 'w-full lg:w-1/2 border-l border-[#edebe9]' : 'w-full'
             }`}
           >
-            <div className="w-full max-w-sm sticky top-0">
-              <div className="text-[11px] font-semibold text-[#605e5c] uppercase tracking-wider mb-2 text-center">
-                Live Telegram Preview
+            <div className={`w-full ${viewMode === 'split' ? 'max-w-sm' : 'max-w-md'} flex flex-col items-center`}>
+              <div className="text-[11px] font-bold text-[#605e5c] uppercase tracking-wider mb-3 text-center flex items-center gap-2">
+                <span>Live Telegram Client</span>
+                <span className="text-[9px] font-normal text-[#8a8886] bg-white px-2 py-0.5 rounded-full border border-[#edebe9]">
+                  Interactive · Click to edit
+                </span>
               </div>
-              <TelegramPreview components={components} storeName={storeName} />
+              <TelegramPreview
+                components={components}
+                storeName={storeName}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                showDeviceFrame={viewMode === 'preview'}
+              />
             </div>
           </div>
         )}
