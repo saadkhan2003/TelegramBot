@@ -190,7 +190,7 @@ export default function Sidebar() {
                       {user?.name || user?.email?.split('@')[0] || 'Admin'}
                     </p>
                     <p className="text-[10px] text-[#605e5c] truncate mt-0.5" title={user?.email || ''}>
-                      {user?.email || 'admin@deluxstore.com'}
+                      {user?.email || 'administrator'}
                     </p>
                   </div>
                 </div>

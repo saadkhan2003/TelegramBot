@@ -248,12 +248,12 @@ export function CommandPalette({ isOpen, onClose, initialQuery = '' }: CommandPa
         id: 'action-view-bot',
         category: 'Actions',
         title: 'Open Telegram Bot Channel',
-        subtitle: 'Launch @thedeluxstorebot in Telegram client',
+        subtitle: 'Launch your Telegram Bot',
         badge: 'External',
         badgeColor: 'bg-[#f3f2f1] text-[#605e5c] border-[#edebe9]',
         icon: <Bot className="h-4 w-4 text-[#0078d4]" />,
         action: () => {
-          window.open('https://t.me/thedeluxstorebot', '_blank');
+          window.open('https://t.me/', '_blank');
           onClose();
         },
         keywords: ['telegram', 'bot', 'open', 'channel', 'chat'],
@@ -569,7 +569,7 @@ export function CommandPalette({ isOpen, onClose, initialQuery = '' }: CommandPa
           </div>
 
           <div className="hidden sm:flex items-center gap-1 text-[#0078d4] font-medium">
-            <span>Delux Enterprise Omnisearch</span>
+            <span>Store Admin Omnisearch</span>
           </div>
         </div>
       </div>

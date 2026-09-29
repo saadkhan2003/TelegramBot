@@ -5,24 +5,90 @@ import { PrismaService } from '../../common/prisma.service';
 export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getAllSettings() {
+  async getAllSettings(storeId?: string) {
     const settings = await this.prisma.systemSetting.findMany({
       orderBy: { key: 'asc' },
     });
-    // Filter sensitive fields
-    return settings.map((s) => ({
-      ...s,
-      value: s.isSensitive ? '••••••••' : s.value,
-    }));
+
+    if (!storeId) {
+      return settings
+        .filter((s) => !s.key.startsWith('store_') && !s.key.startsWith('bot_screen_'))
+        .map((s) => ({
+          ...s,
+          value: s.isSensitive ? '••••••••' : s.value,
+        }));
+    }
+
+    const storePrefix = `store_${storeId}_`;
+    const storeOverrides = new Map<string, any>();
+
+    for (const s of settings) {
+      if (s.key.startsWith(storePrefix)) {
+        const cleanKey = s.key.replace(storePrefix, '');
+        storeOverrides.set(cleanKey, s.value);
+      }
+    }
+
+    // Default sanitized values for store-specific fields for new stores
+    const storeSpecificKeys: Record<string, any> = {
+      store_name: '',
+      store_tagline: '',
+      welcome_message: '',
+      support_username: '',
+      announcement_channel: '',
+      terms_text: 'All digital licenses and codes are guaranteed authentic with 30-day warranty.',
+      owner_telegram_id: '',
+      maintenance_message: 'Our store is temporarily undergoing scheduled maintenance. We will be right back!',
+      fulfillment_notice: 'Your order is being sourced from our wholesaler. Delivery typically completes in 5-30 minutes.',
+    };
+
+    const baseSettings = settings.filter(
+      (s) => !s.key.startsWith('store_') && !s.key.startsWith('bot_screen_')
+    );
+
+    const result = baseSettings.map((s) => {
+      if (storeOverrides.has(s.key)) {
+        return {
+          ...s,
+          value: storeOverrides.get(s.key),
+        };
+      }
+      if (s.key in storeSpecificKeys) {
+        return {
+          ...s,
+          value: storeSpecificKeys[s.key],
+        };
+      }
+      return {
+        ...s,
+        value: s.isSensitive ? '••••••••' : s.value,
+      };
+    });
+
+    for (const [cleanKey, value] of storeOverrides.entries()) {
+      if (!baseSettings.some((b) => b.key === cleanKey)) {
+        result.push({
+          id: cleanKey,
+          key: cleanKey,
+          value,
+          description: null,
+          isSensitive: false,
+          updatedAt: new Date(),
+        } as any);
+      }
+    }
+
+    return result;
   }
 
-  async updateSetting(key: string, value: any, adminId: string) {
-    const existing = await this.prisma.systemSetting.findUnique({ where: { key } });
+  async updateSetting(key: string, value: any, adminId: string, storeId?: string) {
+    const settingKey = storeId ? `store_${storeId}_${key}` : key;
+    const existing = await this.prisma.systemSetting.findUnique({ where: { key: settingKey } });
 
     const updated = await this.prisma.systemSetting.upsert({
-      where: { key },
+      where: { key: settingKey },
       update: { value },
-      create: { key, value },
+      create: { key: settingKey, value },
     });
 
     // Record audit log
@@ -31,7 +97,7 @@ export class SettingsService {
         adminId,
         action: 'UPDATE_SYSTEM_SETTING',
         resourceType: 'system_settings',
-        resourceId: key,
+        resourceId: settingKey,
         beforeData: existing ? (existing.value as any) : null,
         afterData: value,
       },

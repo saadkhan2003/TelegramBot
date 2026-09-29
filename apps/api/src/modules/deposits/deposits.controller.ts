@@ -10,8 +10,9 @@ export class DepositsController {
 
   @Get('networks')
   @RequirePermissions('deposits.view')
-  async getNetworks() {
-    return this.depositsService.getAllNetworksAdmin();
+  async getNetworks(@Req() req: any) {
+    const storeId = req.headers['x-store-id'] as string;
+    return this.depositsService.getAllNetworksAdmin(storeId);
   }
 
   @Post('networks')
@@ -52,8 +53,10 @@ export class DepositsController {
       type?: string;
       sortOrder?: number;
     },
+    @Req() req: any,
   ) {
-    return this.depositsService.updateNetwork(id, body);
+    const storeId = req.headers['x-store-id'] as string;
+    return this.depositsService.updateNetwork(id, body, storeId);
   }
 
   @Delete('networks/:id')

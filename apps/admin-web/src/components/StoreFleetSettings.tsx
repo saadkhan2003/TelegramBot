@@ -152,7 +152,7 @@ export default function StoreFleetSettings() {
               </div>
               <div>
                 <h4 className="text-xs font-bold text-[#201f1e]">
-                  Active Store: {activeStore?.name || 'Delux Store'}
+                  Active Store: {activeStore?.name || 'Your Store'}
                 </h4>
                 <p className="text-[10px] text-[#605e5c]">Slug: {activeStore?.slug}</p>
               </div>
@@ -279,7 +279,7 @@ export default function StoreFleetSettings() {
                 type="text"
                 value={supportUsername}
                 onChange={(e) => setSupportUsername(e.target.value)}
-                placeholder="e.g. @deluxsupport"
+                placeholder="e.g. @yoursupport"
                 className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] p-2 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
               />
             </div>

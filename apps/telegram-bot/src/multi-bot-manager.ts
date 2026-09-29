@@ -53,9 +53,9 @@ export class MultiBotManager {
       if (envToken && envToken !== 'your_telegram_bot_token_here') {
         const hasEnvStore = stores.some((s) => s.botToken === envToken);
         if (!hasEnvStore) {
-          // Find or assign default store
+          // Find first active store to attach env token to
           const defaultStore = await prisma.store.findFirst({
-            where: { slug: 'delux-store' },
+            orderBy: { createdAt: 'asc' },
           });
           if (defaultStore) {
             stores.push({
@@ -65,8 +65,8 @@ export class MultiBotManager {
           } else {
             stores.push({
               id: '0cd40b08-3907-4be1-8458-409e9cee21f2',
-              name: 'Delux Store',
-              slug: 'delux-store',
+              name: 'Default Store',
+              slug: 'default-store',
               botToken: envToken,
               botStatus: 'ACTIVE',
             } as any);

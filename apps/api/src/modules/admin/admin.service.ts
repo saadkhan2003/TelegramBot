@@ -253,8 +253,8 @@ export class AdminService {
         latencyMs: Date.now() - start,
         message: 'Bot token verified. grammY runtime polling active.',
         bot: {
-          username: 'thedeluxstorebot',
-          firstName: 'Delux Store Bot',
+          username: 'your_store_bot',
+          firstName: 'Store Bot',
         },
       };
     }

@@ -11,15 +11,18 @@ export class WalletsController {
   @Get('transactions')
   @RequirePermissions('wallets.view')
   async getTransactions(
+    @Req() req: any,
     @Query('userId') userId?: string,
     @Query('walletId') walletId?: string,
     @Query('type') type?: WalletTxType,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
     return this.walletsService.getTransactions({
       userId,
       walletId,
+      storeId,
       type,
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 50,

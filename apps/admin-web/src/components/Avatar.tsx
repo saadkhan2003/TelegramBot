@@ -42,7 +42,7 @@ export function Avatar({
 }: AvatarProps) {
   const [hasError, setHasError] = useState(false);
 
-  const effectiveSeed = seed || email || name || 'delux_user';
+  const effectiveSeed = seed || email || name || 'store_user';
   const avatarUrl = src || getNotionistAvatarUrl(effectiveSeed);
   const displayName = name || email || seed || 'User';
 

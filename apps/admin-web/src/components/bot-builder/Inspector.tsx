@@ -371,7 +371,7 @@ export default function Inspector({
               <input
                 type="text"
                 className={inputClass}
-                placeholder="e.g. Delux Leadership Team"
+                placeholder="e.g. Your Team Name"
                 value={component.author || ''}
                 onChange={(e) => update({ author: e.target.value })}
               />

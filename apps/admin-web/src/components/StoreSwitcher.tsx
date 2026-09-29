@@ -84,14 +84,14 @@ export default function StoreSwitcher() {
           <div className="relative h-8 w-8 rounded-[7px] p-[1px] shadow-sm flex items-center justify-center shrink-0 border border-[#0078d4]/30 bg-[#051329] overflow-hidden">
             <img
               src="/icons/icon-192.png"
-              alt="Delux Store"
+              alt="Store"
               className="h-full w-full object-cover rounded-[6px]"
             />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-[#201f1e] truncate tracking-tight">
-                {activeStore ? activeStore.name : 'Delux Store'}
+                {activeStore ? activeStore.name : 'Your Store'}
               </span>
               <span className="px-1.5 py-0.2 text-[8px] font-bold bg-[#eff6fc] text-[#0078d4] border border-[#c7e0f4] rounded-[2px] uppercase tracking-wide">
                 {activeStore?.currency || 'USD'}

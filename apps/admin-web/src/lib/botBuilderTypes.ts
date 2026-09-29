@@ -235,12 +235,12 @@ export const TEMPLATE_VARIABLES: TemplateVariable[] = [
   { key: 'commissionRate', desc: 'Affiliate commission percentage', category: 'wallet', categoryIcon: '💰', example: '10%' },
 
   // 3. Store & Brand Info
-  { key: 'storeName', desc: 'Business / Bot brand name', category: 'store', categoryIcon: '🏪', example: 'Delux Store' },
-  { key: 'storeTagline', desc: 'Store slogan or proposition', category: 'store', categoryIcon: '🏪', example: 'Premier Cloud & Digital Services' },
-  { key: 'botUsername', desc: 'Bot Telegram username', category: 'store', categoryIcon: '🏪', example: '@thedeluxstorebot' },
-  { key: 'supportUsername', desc: 'Official customer support @handle', category: 'store', categoryIcon: '🏪', example: '@deluxsupport' },
-  { key: 'channelLink', desc: 'Official news channel URL', category: 'store', categoryIcon: '🏪', example: 'https://t.me/deluxnews' },
-  { key: 'websiteUrl', desc: 'External web portal link', category: 'store', categoryIcon: '🏪', example: 'https://deluxstore.io' },
+  { key: 'storeName', desc: 'Business / Bot brand name', category: 'store', categoryIcon: '🏪', example: 'Your Store' },
+  { key: 'storeTagline', desc: 'Store slogan or proposition', category: 'store', categoryIcon: '🏪', example: 'Premium Digital Services' },
+  { key: 'botUsername', desc: 'Bot Telegram username', category: 'store', categoryIcon: '🏪', example: '@yourshopbot' },
+  { key: 'supportUsername', desc: 'Official customer support @handle', category: 'store', categoryIcon: '🏪', example: '@yoursupport' },
+  { key: 'channelLink', desc: 'Official news channel URL', category: 'store', categoryIcon: '🏪', example: 'https://t.me/yournews' },
+  { key: 'websiteUrl', desc: 'External web portal link', category: 'store', categoryIcon: '🏪', example: 'https://yourstore.io' },
   { key: 'operationalHours', desc: 'Live operating availability', category: 'store', categoryIcon: '🏪', example: '24/7 Automated' },
 
   // 4. E-Commerce & Orders

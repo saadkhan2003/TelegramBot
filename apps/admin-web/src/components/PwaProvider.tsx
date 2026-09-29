@@ -76,12 +76,12 @@ export default function PwaProvider({ children }: { children: React.ReactNode })
             <div className="h-11 w-11 rounded-[8px] bg-[#051329] overflow-hidden shrink-0 border border-[#0078d4]/40 shadow-sm p-[1px]">
               <img
                 src="/icons/icon-192.png"
-                alt="Delux Store App"
+                alt="Store Admin App"
                 className="h-full w-full object-cover rounded-[7px]"
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-semibold text-[#201f1e]">Install Delux Store App</h4>
+              <h4 className="text-sm font-semibold text-[#201f1e]">Install Store Admin App</h4>
               <p className="text-xs text-[#605e5c] mt-0.5">
                 Install as a mobile app on your home screen for quick access and instant order alerts.
               </p>

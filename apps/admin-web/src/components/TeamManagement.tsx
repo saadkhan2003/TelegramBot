@@ -362,7 +362,7 @@ export default function TeamManagement() {
                     required
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="friend@deluxstore.com"
+                    placeholder="colleague@yourdomain.com"
                     className="w-full bg-[#faf9f8] border border-[#d2d0ce] rounded-[4px] pl-8 pr-2.5 py-2 text-xs text-[#201f1e] focus:bg-white focus:outline-none focus:border-[#0078d4]"
                   />
                 </div>

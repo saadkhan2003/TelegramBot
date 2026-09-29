@@ -13,13 +13,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Delux Store — Admin Control Panel',
+  title: 'Store Admin — Sovereign Control Panel',
   description: 'Enterprise Telegram Digital Store Admin Control Panel & Ledger',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Delux Store',
+    title: 'Store Admin',
   },
   icons: {
     icon: [

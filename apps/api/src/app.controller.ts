@@ -6,7 +6,7 @@ export class AppController {
   getRoot() {
     return {
       status: 'online',
-      service: 'Delux Store Enterprise API Engine',
+      service: 'Store Admin Enterprise API Engine',
       version: '1.0.0',
       timestamp: new Date().toISOString(),
       endpoints: {

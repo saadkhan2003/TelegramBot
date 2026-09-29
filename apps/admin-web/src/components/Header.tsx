@@ -457,7 +457,7 @@ export default function Header() {
                       {user?.name || user?.email?.split('@')[0] || 'Administrator'}
                     </p>
                     <p className="text-[11px] text-[#605e5c] truncate mt-0.5">
-                      {user?.email || 'admin@deluxstore.com'}
+                      {user?.email || 'administrator'}
                     </p>
                     <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#107c10] mt-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#107c10]" />

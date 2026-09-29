@@ -9,8 +9,9 @@ export class SettingsController {
 
   @Get('settings')
   @RequirePermissions('settings.manage')
-  async getSettings() {
-    return this.settingsService.getAllSettings();
+  async getSettings(@Req() req: any) {
+    const storeId = req.headers['x-store-id'] as string;
+    return this.settingsService.getAllSettings(storeId);
   }
 
   @Patch('settings/:key')
@@ -20,7 +21,8 @@ export class SettingsController {
     @Body() body: { value: any },
     @Req() req: any,
   ) {
-    return this.settingsService.updateSetting(key, body.value, req.admin.sub);
+    const storeId = req.headers['x-store-id'] as string;
+    return this.settingsService.updateSetting(key, body.value, req.admin.sub, storeId);
   }
 
   @Get('translations')

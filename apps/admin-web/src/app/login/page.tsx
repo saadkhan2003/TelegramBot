@@ -171,18 +171,18 @@ export default function LoginPage() {
       <div className="w-full max-w-[440px] flex flex-col items-center z-10 my-auto sm:my-0">
         {/* Main Microsoft Auth Card */}
         <div className="w-full bg-white p-6 sm:p-11 shadow-[0_2px_6px_rgba(0,0,0,0.15)] sm:shadow-[0_2px_6px_rgba(0,0,0,0.2)] border border-[#edebe9] rounded-[4px] sm:rounded-[2px] text-[#1b1a19] transition-all">
-          {/* Delux Store Brand Header */}
+          {/* Brand Header */}
           <div className="flex items-center gap-2.5 mb-6">
             <div className="h-8 w-8 rounded-[7px] bg-[#051329] border border-[#0078d4]/40 overflow-hidden shadow-xs p-[1.5px] shrink-0">
               <img
                 src="/icons/icon-192.png"
-                alt="Delux Store"
+                alt="Store Admin"
                className="h-full w-full object-cover rounded-[5.5px]"
               />
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-[18px] sm:text-[19px] tracking-tight text-[#1b1a19]">
-                Delux Store
+                Store Admin
               </span>
             </div>
           </div>
@@ -367,7 +367,7 @@ export default function LoginPage() {
                       autoComplete="username"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="e.g. admin@deluxstore.com"
+                      placeholder="e.g. admin@yourdomain.com"
                       className="w-full border-b border-[#1b1a19] focus:border-b-2 focus:border-[#0067b8] focus:outline-none py-2 sm:py-1.5 text-base sm:text-sm text-[#1b1a19] placeholder-[#737373] transition bg-transparent"
                     />
                   </div>
@@ -616,7 +616,7 @@ export default function LoginPage() {
           >
             Can’t access your account?
           </button>
-          <span>© 2026 Delux Store</span>
+          <span>© 2026 Store Admin Platform</span>
         </div>
       </footer>
 

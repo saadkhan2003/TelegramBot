@@ -7,12 +7,19 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import MobileBottomBar from './MobileBottomBar';
 import PwaProvider from './PwaProvider';
-import { StoreProvider } from '../context/StoreContext';
+import { StoreProvider, useStore } from '../context/StoreContext';
 import { NavigationProvider, useNavigation } from '../context/NavigationContext';
 import { Loader2, ShieldCheck, Lock } from 'lucide-react';
 
 function ShellContent({ children }: { children: React.ReactNode }) {
   const { isSidebarCollapsed } = useNavigation();
+  const { activeStore } = useStore();
+
+  React.useEffect(() => {
+    if (activeStore?.name) {
+      document.title = `${activeStore.name} — Admin`;
+    }
+  }, [activeStore?.name]);
 
   return (
     <div className="flex min-h-screen w-full relative">

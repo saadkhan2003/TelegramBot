@@ -473,7 +473,7 @@ export class AuthService {
     try {
       await this.telegramNotify.sendMessage({
         telegramUserId: adminTgId,
-        text: `🔐 *Delux Store Admin Security Alert*\n\n` +
+        text: `🔐 *Store Admin Security Alert*\n\n` +
           `A password recovery was requested for account:\n\`${normalizedEmail}\`\n\n` +
           `*Verification Code:* \`${code}\`\n` +
           `*Validity:* 15 minutes\n` +
@@ -549,7 +549,7 @@ export class AuthService {
     try {
       await this.telegramNotify.sendMessage({
         telegramUserId: adminTgId,
-        text: `✅ *Delux Store Admin Password Changed*\n\n` +
+        text: `✅ *Store Admin Password Changed*\n\n` +
           `The password for \`${normalizedEmail}\` has been successfully updated.\n` +
           `All prior active sessions have been revoked.`,
       });

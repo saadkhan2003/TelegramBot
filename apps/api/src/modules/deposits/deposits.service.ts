@@ -22,9 +22,40 @@ export class DepositsService {
     });
   }
 
-  async getAllNetworksAdmin() {
-    return this.prisma.paymentNetwork.findMany({
+  async getAllNetworksAdmin(storeId?: string) {
+    const networks = await this.prisma.paymentNetwork.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
+
+    if (!storeId) {
+      return networks;
+    }
+
+    const storeSettings = await this.prisma.systemSetting.findUnique({
+      where: { key: `store_${storeId}_payment_networks` },
+    });
+
+    const overrides: Record<string, any> = (storeSettings?.value as any) || {};
+
+    return networks.map((net) => {
+      const netOverride = overrides[net.id] || overrides[net.chain];
+      if (netOverride) {
+        return {
+          ...net,
+          accountTitle: netOverride.accountTitle !== undefined ? netOverride.accountTitle : '',
+          receivingAddress: netOverride.receivingAddress !== undefined ? netOverride.receivingAddress : '',
+          instructions: netOverride.instructions !== undefined ? netOverride.instructions : net.instructions,
+          minDeposit: netOverride.minDeposit !== undefined ? netOverride.minDeposit : net.minDeposit,
+          isActive: netOverride.isActive !== undefined ? netOverride.isActive : false,
+        };
+      }
+      // Pristine default for newly created store: No pre-filled other store account info
+      return {
+        ...net,
+        accountTitle: '',
+        receivingAddress: '',
+        isActive: false,
+      };
     });
   }
 
@@ -42,22 +73,54 @@ export class DepositsService {
       type?: string;
       sortOrder?: number;
     },
+    storeId?: string,
   ) {
-    return this.prisma.paymentNetwork.update({
-      where: { id },
-      data: {
-        ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.accountTitle !== undefined ? { accountTitle: data.accountTitle } : {}),
-        ...(data.receivingAddress !== undefined ? { receivingAddress: data.receivingAddress } : {}),
-        ...(data.instructions !== undefined ? { instructions: data.instructions } : {}),
-        ...(data.minDeposit !== undefined ? { minDeposit: data.minDeposit } : {}),
-        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
-        ...(data.currency !== undefined ? { currency: data.currency } : {}),
-        ...(data.symbol !== undefined ? { symbol: data.symbol } : {}),
-        ...(data.type !== undefined ? { type: data.type } : {}),
-        ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
+    if (!storeId) {
+      return this.prisma.paymentNetwork.update({
+        where: { id },
+        data: {
+          ...(data.name !== undefined ? { name: data.name } : {}),
+          ...(data.accountTitle !== undefined ? { accountTitle: data.accountTitle } : {}),
+          ...(data.receivingAddress !== undefined ? { receivingAddress: data.receivingAddress } : {}),
+          ...(data.instructions !== undefined ? { instructions: data.instructions } : {}),
+          ...(data.minDeposit !== undefined ? { minDeposit: data.minDeposit } : {}),
+          ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+          ...(data.currency !== undefined ? { currency: data.currency } : {}),
+          ...(data.symbol !== undefined ? { symbol: data.symbol } : {}),
+          ...(data.type !== undefined ? { type: data.type } : {}),
+          ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
+        },
+      });
+    }
+
+    const key = `store_${storeId}_payment_networks`;
+    const existing = await this.prisma.systemSetting.findUnique({ where: { key } });
+    const currentMap = (existing?.value as Record<string, any>) || {};
+
+    currentMap[id] = {
+      ...(currentMap[id] || {}),
+      ...(data.accountTitle !== undefined ? { accountTitle: data.accountTitle } : {}),
+      ...(data.receivingAddress !== undefined ? { receivingAddress: data.receivingAddress } : {}),
+      ...(data.instructions !== undefined ? { instructions: data.instructions } : {}),
+      ...(data.minDeposit !== undefined ? { minDeposit: data.minDeposit } : {}),
+      ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+    };
+
+    await this.prisma.systemSetting.upsert({
+      where: { key },
+      create: {
+        key,
+        value: currentMap,
+        description: `Payment network overrides for store ${storeId}`,
       },
+      update: { value: currentMap },
     });
+
+    const net = await this.prisma.paymentNetwork.findUnique({ where: { id } });
+    return {
+      ...net,
+      ...currentMap[id],
+    };
   }
 
   async createNetwork(data: {
@@ -113,9 +176,7 @@ export class DepositsService {
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (params?.storeId) {
-      where.user = { orders: { some: { storeId: params.storeId } } };
-    }
+    if (params?.storeId) where.storeId = params.storeId;
     if (params?.userId) where.userId = params.userId;
     if (params?.status) where.status = params.status;
 
