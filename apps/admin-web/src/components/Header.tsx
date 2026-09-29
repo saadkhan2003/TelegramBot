@@ -164,7 +164,11 @@ export default function Header() {
   };
 
   return (
-    <header className="h-14 bg-white/95 backdrop-blur-md border-b border-[#e2e8f0] flex items-center justify-between px-2.5 sm:px-6 sticky top-0 z-30 shadow-2xs select-none gap-1.5 sm:gap-3">
+    <header
+      className={`h-14 bg-white/95 backdrop-blur-md border-b border-[#e2e8f0] flex items-center justify-between sticky top-0 z-30 shadow-2xs select-none gap-1.5 sm:gap-3 transition-all duration-300 ${
+        isSidebarCollapsed ? 'px-4' : 'px-2.5 sm:px-6'
+      }`}
+    >
       {/* 1. Left Section: Breadcrumb & Context Navigation */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
         {/* Mobile Hamburger Drawer Toggle */}

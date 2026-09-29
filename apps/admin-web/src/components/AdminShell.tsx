@@ -19,7 +19,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div
         className={`flex-1 flex flex-col min-h-screen w-full pb-16 lg:pb-0 transition-all duration-300 ease-in-out ${
-          isSidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'
+          isSidebarCollapsed ? 'lg:pl-0' : 'lg:pl-64'
         }`}
       >
         <Header />
