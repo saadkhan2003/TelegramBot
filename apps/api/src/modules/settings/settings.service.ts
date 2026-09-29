@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 
 @Injectable()
@@ -127,6 +127,8 @@ export class SettingsService {
     page?: number;
     limit?: number;
     resourceType?: string;
+    storeId?: string;
+    adminId?: string;
   }) {
     const page = params?.page || 1;
     const limit = params?.limit || 50;
@@ -134,6 +136,22 @@ export class SettingsService {
 
     const where: any = {};
     if (params?.resourceType) where.resourceType = params.resourceType;
+
+    // Strict Store Isolation for Audit Logs
+    if (params?.storeId) {
+      const store = await this.prisma.store.findUnique({
+        where: { id: params.storeId },
+        include: { members: { select: { adminId: true } } },
+      });
+      if (store) {
+        const allowedAdminIds = [store.ownerId, ...store.members.map((m) => m.adminId)];
+        where.adminId = { in: allowedAdminIds };
+      } else if (params.adminId) {
+        where.adminId = params.adminId;
+      }
+    } else if (params?.adminId) {
+      where.adminId = params.adminId;
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.auditLog.findMany({
@@ -160,22 +178,50 @@ export class SettingsService {
   }
 
   async getBotScreens(storeId?: string) {
-    const prefix = storeId ? `bot_screen_${storeId}_` : 'bot_screen_';
+    if (!storeId) {
+      return { screens: {}, deletedKeys: [] };
+    }
+    const prefix = `bot_screen_${storeId}_`;
     const records = await this.prisma.systemSetting.findMany({
       where: { key: { startsWith: prefix } },
     });
-    return records.reduce((acc: Record<string, any>, r) => {
+    const screens = records.reduce((acc: Record<string, any>, r) => {
       acc[r.key.replace(prefix, '')] = r.value;
       return acc;
     }, {});
+
+    const delKey = `bot_deleted_screens_${storeId}`;
+    const deletedSetting = await this.prisma.systemSetting.findUnique({
+      where: { key: delKey },
+    });
+    const deletedKeys: string[] = Array.isArray(deletedSetting?.value)
+      ? (deletedSetting.value as string[])
+      : [];
+
+    return { screens, deletedKeys };
   }
 
-  async saveBotScreen(key: string, data: { components: any[]; meta?: any }, storeId?: string) {
+  async saveBotScreen(key: string, data: { components: any[]; meta?: any; triggers?: any }, storeId?: string) {
     const settingKey = storeId ? `bot_screen_${storeId}_${key}` : `bot_screen_${key}`;
     const value = {
       components: data.components,
+      triggers: data.triggers || data.meta?.triggers || null,
       meta: data.meta || null,
     };
+
+    // If previously in deleted keys for this store, un-delete it
+    if (storeId) {
+      const delKey = `bot_deleted_screens_${storeId}`;
+      const existing = await this.prisma.systemSetting.findUnique({ where: { key: delKey } });
+      if (existing && Array.isArray(existing.value)) {
+        const updated = (existing.value as string[]).filter((k) => k !== key);
+        await this.prisma.systemSetting.update({
+          where: { key: delKey },
+          data: { value: updated },
+        });
+      }
+    }
+
     return this.prisma.systemSetting.upsert({
       where: { key: settingKey },
       create: {
@@ -188,10 +234,34 @@ export class SettingsService {
   }
 
   async deleteBotScreen(key: string, storeId?: string) {
+    if (key === 'welcome') {
+      throw new BadRequestException('The Welcome screen cannot be deleted');
+    }
+
     const settingKey = storeId ? `bot_screen_${storeId}_${key}` : `bot_screen_${key}`;
     await this.prisma.systemSetting.deleteMany({
       where: { key: settingKey },
     });
+
+    // Mark as deleted for this specific store so it never leaks back from defaults
+    if (storeId) {
+      const delKey = `bot_deleted_screens_${storeId}`;
+      const existing = await this.prisma.systemSetting.findUnique({ where: { key: delKey } });
+      const currentList: string[] = Array.isArray(existing?.value) ? (existing.value as string[]) : [];
+      if (!currentList.includes(key)) {
+        currentList.push(key);
+        await this.prisma.systemSetting.upsert({
+          where: { key: delKey },
+          create: {
+            key: delKey,
+            value: currentList,
+            description: `Deleted bot screens for store ${storeId}`,
+          },
+          update: { value: currentList },
+        });
+      }
+    }
+
     return { success: true, key };
   }
 }

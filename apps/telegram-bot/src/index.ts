@@ -142,8 +142,7 @@ export async function getScreenFull(
       record = await prisma.systemSetting.findUnique({
         where: { key: `bot_screen_${storeId}_${key}` },
       });
-    }
-    if (!record) {
+    } else {
       record = await prisma.systemSetting.findUnique({
         where: { key: `bot_screen_${key}` },
       });
@@ -163,17 +162,13 @@ export async function getScreenFull(
 
 export async function getAllScreens(storeId?: string): Promise<Array<{ key: string; components: any[]; triggers?: any }>> {
   try {
-    const prefix = storeId ? `bot_screen_${storeId}_` : 'bot_screen_';
-    let records = await prisma.systemSetting.findMany({
+    if (!storeId) return [];
+    const prefix = `bot_screen_${storeId}_`;
+    const records = await prisma.systemSetting.findMany({
       where: { key: { startsWith: prefix } },
     });
-    if (records.length === 0 && storeId) {
-      records = await prisma.systemSetting.findMany({
-        where: { key: { startsWith: 'bot_screen_' } },
-      });
-    }
     return records.map((r) => {
-      const key = r.key.replace(prefix, '').replace('bot_screen_', '');
+      const key = r.key.replace(prefix, '');
       const val = r.value as any;
       return {
         key,

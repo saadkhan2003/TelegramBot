@@ -26,9 +26,11 @@ import { fetchApi } from '../lib/api';
 import { SearchableSelect } from './SearchableSelect';
 import { Modal } from './Modal';
 import { useAuth } from '../context/AuthContext';
+import { useStore } from '../context/StoreContext';
 
 export default function TeamManagement() {
   const { user: currentUser } = useAuth();
+  const { activeStore } = useStore();
   const [members, setMembers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +77,7 @@ export default function TeamManagement() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeStore?.id]);
 
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();

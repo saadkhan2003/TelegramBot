@@ -35,6 +35,7 @@ import { useStore } from '../../context/StoreContext';
 import { fetchApi } from '../../lib/api';
 import {
   DEFAULT_SCREENS,
+  TEMPLATE_SCREENS,
   BotScreen,
   BotComponent,
   ScreenTriggers,
@@ -112,45 +113,62 @@ export default function BotBuilderPage() {
     async function loadScreens() {
       try {
         setIsLoading(true);
-        const saved = await fetchApi<Record<string, { components: BotComponent[]; meta?: any; triggers?: ScreenTriggers }>>(
-          '/admin/bot-screens',
-        );
+        const res = await fetchApi<any>('/admin/bot-screens');
 
-        if (saved && typeof saved === 'object') {
-          const loadedScreens: BotScreen[] = [...DEFAULT_SCREENS];
-          const loadedData: Record<string, BotComponent[]> = {};
+        let savedMap: Record<string, any> = {};
+        let deletedKeys: string[] = [];
 
-          DEFAULT_SCREENS.forEach((s) => {
-            loadedData[s.key] = s.components;
-          });
+        if (res && typeof res === 'object') {
+          if (res.screens && typeof res.screens === 'object') {
+            savedMap = res.screens;
+            deletedKeys = Array.isArray(res.deletedKeys) ? res.deletedKeys : [];
+          } else {
+            savedMap = res;
+          }
+        }
 
-          Object.entries(saved).forEach(([key, val]) => {
-            if (val && Array.isArray(val.components)) {
-              loadedData[key] = val.components;
+        const loadedScreens: BotScreen[] = [...DEFAULT_SCREENS];
+        const loadedData: Record<string, BotComponent[]> = {};
 
-              const existingIdx = loadedScreens.findIndex((s) => s.key === key);
-              const triggers = (val as any).triggers || val.meta?.triggers;
-              if (existingIdx >= 0) {
-                if (val.meta?.label) loadedScreens[existingIdx].label = val.meta.label;
-                if (val.meta?.icon) loadedScreens[existingIdx].icon = val.meta.icon;
-                if (triggers) loadedScreens[existingIdx].triggers = triggers;
-              } else {
-                loadedScreens.push({
-                  key,
-                  label: val.meta?.label || key.replace('_', ' '),
-                  icon: val.meta?.icon || '📄',
-                  description: val.meta?.description || 'Custom configured bot screen',
-                  category: val.meta?.category || 'custom',
-                  isCustom: true,
-                  components: val.components,
-                  triggers,
-                });
-              }
+        DEFAULT_SCREENS.forEach((s) => {
+          loadedData[s.key] = s.components;
+        });
+
+        Object.entries(savedMap).forEach(([key, val]) => {
+          if (val && Array.isArray(val.components)) {
+            loadedData[key] = val.components;
+
+            const existingIdx = loadedScreens.findIndex((s) => s.key === key);
+            const template = TEMPLATE_SCREENS.find((t) => t.key === key);
+            const triggers = (val as any).triggers || val.meta?.triggers || template?.triggers;
+            if (existingIdx >= 0) {
+              if (val.meta?.label) loadedScreens[existingIdx].label = val.meta.label;
+              if (val.meta?.icon) loadedScreens[existingIdx].icon = val.meta.icon;
+              if (triggers) loadedScreens[existingIdx].triggers = triggers;
+            } else {
+              loadedScreens.push({
+                key,
+                label: val.meta?.label || template?.label || key.replace('_', ' '),
+                icon: val.meta?.icon || template?.icon || '📄',
+                description: val.meta?.description || template?.description || 'Custom configured bot screen',
+                category: val.meta?.category || template?.category || 'custom',
+                isCustom: val.meta?.isCustom ?? (template ? false : true),
+                components: val.components,
+                triggers,
+              });
             }
-          });
+          }
+        });
 
-          setScreensList(loadedScreens);
-          setScreensData(loadedData);
+        // Filter out any screens that were explicitly deleted by the user for this store
+        const filteredScreens = loadedScreens.filter((s) => !deletedKeys.includes(s.key));
+        const finalScreens = filteredScreens.length > 0 ? filteredScreens : DEFAULT_SCREENS;
+        setScreensList(finalScreens);
+        setScreensData(loadedData);
+
+        // Ensure activeScreenKey points to an existing screen
+        if (!finalScreens.some((s) => s.key === activeScreenKey)) {
+          setActiveScreenKey('welcome');
         }
       } catch (err: any) {
         console.error('Failed to load bot screens:', err);
@@ -279,7 +297,7 @@ export default function BotBuilderPage() {
 
     let initialComps: BotComponent[] = [];
     if (newScreenTemplate !== 'empty') {
-      const templateScreen = DEFAULT_SCREENS.find((s) => s.key === newScreenTemplate);
+      const templateScreen = TEMPLATE_SCREENS.find((s) => s.key === newScreenTemplate);
       if (templateScreen) {
         initialComps = JSON.parse(JSON.stringify(templateScreen.components));
       }
@@ -336,10 +354,10 @@ export default function BotBuilderPage() {
     setTimeout(() => setStatusMessage(null), 4000);
   };
 
-  // Delete custom screen
+  // Delete screen (any screen except the primary welcome screen)
   const handleDeleteScreen = async (screenToDelete: BotScreen) => {
-    if (!screenToDelete.isCustom) {
-      alert('System preset screens cannot be deleted. You can reset them anytime.');
+    if (screenToDelete.key === 'welcome') {
+      alert('The Welcome / Home screen cannot be deleted because it is the primary entry point for your bot.');
       return;
     }
 
@@ -367,7 +385,7 @@ export default function BotBuilderPage() {
 
       setStatusMessage({
         type: 'success',
-        text: `Screen "${screenToDelete.label}" deleted.`,
+        text: `✓ Screen "${screenToDelete.label}" deleted.`,
       });
       setTimeout(() => setStatusMessage(null), 3000);
     }
@@ -375,7 +393,7 @@ export default function BotBuilderPage() {
 
   // Reset active screen to default template
   const handleResetToDefault = () => {
-    const def = DEFAULT_SCREENS.find((s) => s.key === activeScreenKey);
+    const def = TEMPLATE_SCREENS.find((s) => s.key === activeScreenKey);
     if (!def) {
       alert('This is a custom screen without a default preset.');
       return;
@@ -403,7 +421,7 @@ export default function BotBuilderPage() {
 
   // Apply a template to active screen
   const handleApplyTemplate = (templateKey: string) => {
-    const t = DEFAULT_SCREENS.find((s) => s.key === templateKey);
+    const t = TEMPLATE_SCREENS.find((s) => s.key === templateKey);
     if (!t) return;
     if (
       window.confirm(
@@ -424,6 +442,59 @@ export default function BotBuilderPage() {
       });
       setTimeout(() => setStatusMessage(null), 4000);
     }
+  };
+
+  // Add template as a separate new screen
+  const handleAddTemplateScreen = async (templateKey: string) => {
+    const t = TEMPLATE_SCREENS.find((s) => s.key === templateKey);
+    if (!t) return;
+
+    if (screensList.some((s) => s.key === t.key)) {
+      setActiveScreenKey(t.key);
+      setIsTemplatesModalOpen(false);
+      return;
+    }
+
+    const clonedComponents = JSON.parse(JSON.stringify(t.components));
+    const newScreenObj: BotScreen = {
+      ...t,
+      components: clonedComponents,
+    };
+
+    setScreensList((prev) => [...prev, newScreenObj]);
+    setScreensData((prev) => ({
+      ...prev,
+      [t.key]: clonedComponents,
+    }));
+    setActiveScreenKey(t.key);
+    setSelectedComponentId(null);
+    setIsDirty(true);
+    setIsTemplatesModalOpen(false);
+
+    try {
+      await fetchApi(`/admin/bot-screens/${t.key}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          components: clonedComponents,
+          triggers: t.triggers,
+          meta: {
+            label: t.label,
+            icon: t.icon,
+            description: t.description,
+            category: t.category,
+            triggers: t.triggers,
+          },
+        }),
+      });
+    } catch (e) {
+      console.warn('Auto-save template screen error:', e);
+    }
+
+    setStatusMessage({
+      type: 'success',
+      text: `✓ Added "${t.label}" screen to your bot!`,
+    });
+    setTimeout(() => setStatusMessage(null), 4000);
   };
 
   // Add component
@@ -551,15 +622,15 @@ export default function BotBuilderPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           {isSelected && <Check className="h-3.5 w-3.5 text-[#0078d4]" />}
-                          {s.isCustom && (
+                          {s.key !== 'welcome' && (
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteScreen(s);
                               }}
-                              className="text-[#a19f9d] hover:text-[#a80000] p-1"
-                              title="Delete screen"
+                              className="text-[#a19f9d] hover:text-[#a80000] hover:bg-red-50 p-1 rounded"
+                              title={`Delete screen ${s.label}`}
                             >
                               <Trash2 className="h-3 w-3" />
                             </button>
@@ -763,12 +834,19 @@ export default function BotBuilderPage() {
           const count = (screensData[s.key] || []).length;
           const hasTriggers = Boolean(s.triggers?.keywords?.length || s.triggers?.slashCommands?.length);
           return (
-            <button
+            <div
               key={s.key}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => {
                 setActiveScreenKey(s.key);
                 setSelectedComponentId(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setActiveScreenKey(s.key);
+                  setSelectedComponentId(null);
+                }
               }}
               className={`group flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all shrink-0 cursor-pointer shadow-2xs ${
                 isSelected
@@ -792,7 +870,24 @@ export default function BotBuilderPage() {
               >
                 {count}
               </span>
-            </button>
+              {s.key !== 'welcome' && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteScreen(s);
+                  }}
+                  className={`p-0.5 rounded-full transition ml-0.5 ${
+                    isSelected
+                      ? 'text-white/70 hover:text-white hover:bg-white/25'
+                      : 'text-[#a19f9d] hover:text-[#a80000] hover:bg-red-50'
+                  }`}
+                  title={`Delete screen "${s.label}"`}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           );
         })}
         <button
@@ -1053,10 +1148,11 @@ export default function BotBuilderPage() {
                   className="w-full text-xs p-2 border border-[#d2d0ce] rounded bg-[#faf9f8]"
                 >
                   <option value="empty">📄 Blank Slate (Header + Text + Back Button)</option>
-                  <option value="services">💼 Agency Services & Pricing Preset</option>
-                  <option value="web_app">⚡ Telegram Mini App Launcher Preset</option>
-                  <option value="faq">❓ FAQ & Knowledge Base Preset</option>
-                  <option value="community">🌐 Community & Social Channels Preset</option>
+                  {TEMPLATE_SCREENS.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.icon} {t.label} ({t.category})
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -1102,29 +1198,70 @@ export default function BotBuilderPage() {
             </div>
 
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-              {DEFAULT_SCREENS.map((preset) => (
-                <div
-                  key={preset.key}
-                  className="border border-[#edebe9] hover:border-[#0078d4] rounded-lg p-3 bg-white hover:bg-[#f3f9fd] transition cursor-pointer flex flex-col justify-between group"
-                  onClick={() => handleApplyTemplate(preset.key)}
-                >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">{preset.icon}</span>
-                      <h4 className="text-xs font-bold text-[#201f1e] group-hover:text-[#0078d4]">
-                        {preset.label}
-                      </h4>
+              {TEMPLATE_SCREENS.map((preset) => {
+                const isAlreadyAdded = screensList.some((s) => s.key === preset.key);
+                return (
+                  <div
+                    key={preset.key}
+                    className="border border-[#edebe9] hover:border-[#0078d4] rounded-lg p-3 bg-white hover:bg-[#f3f9fd] transition flex flex-col justify-between group"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{preset.icon}</span>
+                          <h4 className="text-xs font-bold text-[#201f1e] group-hover:text-[#0078d4]">
+                            {preset.label}
+                          </h4>
+                        </div>
+                        {isAlreadyAdded && (
+                          <span className="text-[10px] bg-green-50 text-green-700 font-semibold px-1.5 py-0.5 rounded border border-green-200">
+                            Active in Bot
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#605e5c] leading-relaxed line-clamp-2">
+                        {preset.description}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-[#605e5c] leading-relaxed line-clamp-2">
-                      {preset.description}
-                    </p>
+
+                    <div className="mt-3 pt-2 border-t border-[#edebe9] flex items-center justify-between text-[11px]">
+                      <span className="text-[10px] text-[#8a8886]">
+                        {preset.components.length} components
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {!isAlreadyAdded ? (
+                          <button
+                            type="button"
+                            onClick={() => handleAddTemplateScreen(preset.key)}
+                            className="px-2 py-1 bg-[#0078d4] hover:bg-[#106ebe] text-white font-bold text-[10px] rounded shadow-2xs transition cursor-pointer"
+                          >
+                            + Add to Bot
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveScreenKey(preset.key);
+                              setIsTemplatesModalOpen(false);
+                            }}
+                            className="px-2 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] text-[#201f1e] font-semibold text-[10px] rounded transition cursor-pointer"
+                          >
+                            View Screen
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleApplyTemplate(preset.key)}
+                          className="px-2 py-1 hover:bg-[#eff6fc] text-[#0078d4] font-medium text-[10px] rounded transition cursor-pointer"
+                          title={`Replace components of "${activeScreen.label}" with this template`}
+                        >
+                          Load into current
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-[#edebe9] flex items-center justify-between text-[10px] text-[#8a8886]">
-                    <span>{preset.components.length} components</span>
-                    <span className="text-[#0078d4] font-bold group-hover:underline">Apply Template →</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="p-3 bg-[#faf9f8] border-t border-[#edebe9] flex justify-end">

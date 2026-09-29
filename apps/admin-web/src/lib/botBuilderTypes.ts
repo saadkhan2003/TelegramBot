@@ -297,8 +297,8 @@ export function uid() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-// Initial Preset Screens across multiple industries
-export const DEFAULT_SCREENS: BotScreen[] = [
+// Master Template Screens available to add or preview
+export const TEMPLATE_SCREENS: BotScreen[] = [
   // 1. Welcome / Home Screen
   {
     key: 'welcome',
@@ -577,3 +577,6 @@ export const DEFAULT_SCREENS: BotScreen[] = [
     ],
   },
 ];
+
+// Clean default screen for fresh stores: only the root Welcome / Home screen
+export const DEFAULT_SCREENS: BotScreen[] = [TEMPLATE_SCREENS[0]];

@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
-import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
+import { AdminAuthGuard } from '../auth/auth.guard';
 import * as bcrypt from 'bcrypt';
 
 @Controller('admin/team')
@@ -22,38 +22,115 @@ export class TeamController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()
-  async getTeamMembers() {
-    const members = await this.prisma.admin.findMany({
-      include: {
-        adminRoles: {
-          include: {
-            role: true,
-          },
-        },
-        _count: {
-          select: {
-            sessions: true,
-            auditLogs: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+  async getTeamMembers(@Req() req: any) {
+    const storeId = req.headers['x-store-id'] as string;
+    const currentAdminId = req.admin?.sub;
 
-    return members.map((m) => ({
-      id: m.id,
-      email: m.email,
-      name: m.name || m.email.split('@')[0],
-      status: m.status,
-      roles: m.adminRoles.map((ar) => ({
-        id: ar.role.id,
-        name: ar.role.name,
-        slug: ar.role.slug,
-      })),
-      createdAt: m.createdAt,
-      updatedAt: m.updatedAt,
-      sessionCount: m._count.sessions,
-    }));
+    let store = null;
+    if (storeId) {
+      store = await this.prisma.store.findFirst({
+        where: {
+          id: storeId,
+          OR: [
+            { ownerId: currentAdminId },
+            { members: { some: { adminId: currentAdminId } } },
+          ],
+        },
+        include: {
+          owner: {
+            include: {
+              adminRoles: { include: { role: true } },
+              _count: { select: { sessions: true, auditLogs: true } },
+            },
+          },
+          members: {
+            include: {
+              admin: {
+                include: {
+                  adminRoles: { include: { role: true } },
+                  _count: { select: { sessions: true, auditLogs: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    if (!store) {
+      // Fallback: return only the current logged-in admin, never all system admins
+      if (!currentAdminId) return [];
+      const self = await this.prisma.admin.findUnique({
+        where: { id: currentAdminId },
+        include: {
+          adminRoles: { include: { role: true } },
+          _count: { select: { sessions: true, auditLogs: true } },
+        },
+      });
+      if (!self) return [];
+      return [
+        {
+          id: self.id,
+          email: self.email,
+          name: self.name || self.email.split('@')[0],
+          status: self.status,
+          roles: self.adminRoles.map((ar) => ({
+            id: ar.role.id,
+            name: ar.role.name,
+            slug: ar.role.slug,
+          })),
+          createdAt: self.createdAt,
+          updatedAt: self.updatedAt,
+          sessionCount: self._count.sessions,
+        },
+      ];
+    }
+
+    // Combine store owner and members without duplicates
+    const memberMap = new Map<string, any>();
+
+    // 1. Store Owner
+    const owner = store.owner;
+    if (owner) {
+      memberMap.set(owner.id, {
+        id: owner.id,
+        email: owner.email,
+        name: owner.name || owner.email.split('@')[0],
+        status: owner.status,
+        roles: [{ id: 'role-owner', name: 'Owner', slug: 'OWNER' }],
+        createdAt: owner.createdAt,
+        updatedAt: owner.updatedAt,
+        sessionCount: owner._count?.sessions || 0,
+      });
+    }
+
+    // 2. Store Members
+    for (const sm of store.members) {
+      const a = sm.admin;
+      if (!a) continue;
+      const roleSlug = sm.role || 'ADMIN';
+      const roleName =
+        roleSlug === 'OWNER'
+          ? 'Owner'
+          : roleSlug === 'MANAGER'
+          ? 'Manager'
+          : roleSlug === 'SUPPORT_AGENT'
+          ? 'Support Agent'
+          : 'Admin';
+
+      memberMap.set(a.id, {
+        id: a.id,
+        email: a.email,
+        name: a.name || a.email.split('@')[0],
+        status: a.status,
+        roles: [{ id: `role-${roleSlug.toLowerCase()}`, name: roleName, slug: roleSlug }],
+        createdAt: sm.createdAt || a.createdAt,
+        updatedAt: a.updatedAt,
+        sessionCount: a._count?.sessions || 0,
+      });
+    }
+
+    return Array.from(memberMap.values());
   }
 
   @Get('roles')
@@ -89,16 +166,23 @@ export class TeamController {
       throw new BadRequestException('Password must be at least 6 characters long');
     }
 
-    const existing = await this.prisma.admin.findUnique({
-      where: { email },
-    });
-    if (existing) {
-      throw new BadRequestException('An admin with this email already exists');
+    const storeId = req.headers['x-store-id'] as string;
+    const currentAdminId = req.admin?.sub;
+
+    let store = null;
+    if (storeId) {
+      store = await this.prisma.store.findFirst({
+        where: {
+          id: storeId,
+          OR: [
+            { ownerId: currentAdminId },
+            { members: { some: { adminId: currentAdminId } } },
+          ],
+        },
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(body.password, 10);
     const targetRoleSlug = body.roleSlug || 'ADMIN';
-
     const role = await this.prisma.role.findUnique({
       where: { slug: targetRoleSlug },
     });
@@ -106,36 +190,61 @@ export class TeamController {
       throw new NotFoundException(`Role '${targetRoleSlug}' not found`);
     }
 
-    const newAdmin = await this.prisma.admin.create({
-      data: {
-        email,
-        name: body.name?.trim() || email.split('@')[0],
-        passwordHash: hashedPassword,
-        status: 'ACTIVE',
-        adminRoles: {
-          create: {
-            roleId: role.id,
-          },
-        },
-      },
-      include: {
-        adminRoles: {
-          include: { role: true },
-        },
-      },
+    let admin = await this.prisma.admin.findUnique({
+      where: { email },
+      include: { adminRoles: { include: { role: true } } },
     });
 
+    if (!admin) {
+      const hashedPassword = await bcrypt.hash(body.password, 10);
+      admin = await this.prisma.admin.create({
+        data: {
+          email,
+          name: body.name?.trim() || email.split('@')[0],
+          passwordHash: hashedPassword,
+          status: 'ACTIVE',
+          adminRoles: {
+            create: {
+              roleId: role.id,
+            },
+          },
+        },
+        include: {
+          adminRoles: {
+            include: { role: true },
+          },
+        },
+      });
+    }
+
+    if (store) {
+      const existingMember = await this.prisma.storeMember.findUnique({
+        where: {
+          storeId_adminId: {
+            storeId: store.id,
+            adminId: admin.id,
+          },
+        },
+      });
+      if (existingMember) {
+        throw new BadRequestException('This user is already a member of this store team');
+      }
+      await this.prisma.storeMember.create({
+        data: {
+          storeId: store.id,
+          adminId: admin.id,
+          role: targetRoleSlug,
+        },
+      });
+    }
+
     return {
-      id: newAdmin.id,
-      email: newAdmin.email,
-      name: newAdmin.name,
-      status: newAdmin.status,
-      roles: newAdmin.adminRoles.map((ar) => ({
-        id: ar.role.id,
-        name: ar.role.name,
-        slug: ar.role.slug,
-      })),
-      createdAt: newAdmin.createdAt,
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      status: admin.status,
+      roles: [{ id: role.id, name: role.name, slug: targetRoleSlug }],
+      createdAt: admin.createdAt,
     };
   }
 
@@ -158,7 +267,7 @@ export class TeamController {
     if (!admin) throw new NotFoundException('Team member not found');
 
     // Prevent suspending self
-    if (req.admin.sub === id && body.status === 'SUSPENDED') {
+    if (req.admin?.sub === id && body.status === 'SUSPENDED') {
       throw new ForbiddenException('You cannot suspend your own account');
     }
 
@@ -172,6 +281,7 @@ export class TeamController {
       updateData.passwordHash = await bcrypt.hash(body.password, 10);
     }
 
+    const storeId = req.headers['x-store-id'] as string;
     // Role update
     if (body.roleSlug) {
       const role = await this.prisma.role.findUnique({
@@ -189,6 +299,13 @@ export class TeamController {
           roleId: role.id,
         },
       });
+
+      if (storeId) {
+        await this.prisma.storeMember.updateMany({
+          where: { storeId, adminId: id },
+          data: { role: body.roleSlug },
+        });
+      }
     }
 
     const updated = await this.prisma.admin.update({
@@ -217,8 +334,37 @@ export class TeamController {
 
   @Delete(':id')
   async deleteTeamMember(@Param('id') id: string, @Req() req: any) {
-    if (req.admin.sub === id) {
+    if (req.admin?.sub === id) {
       throw new ForbiddenException('You cannot delete your own account');
+    }
+
+    const storeId = req.headers['x-store-id'] as string;
+    const currentAdminId = req.admin?.sub;
+
+    if (storeId) {
+      const store = await this.prisma.store.findFirst({
+        where: {
+          id: storeId,
+          OR: [
+            { ownerId: currentAdminId },
+            { members: { some: { adminId: currentAdminId } } },
+          ],
+        },
+      });
+
+      if (store) {
+        if (store.ownerId === id) {
+          throw new ForbiddenException('The primary Store Owner cannot be removed from the store team');
+        }
+
+        await this.prisma.storeMember.deleteMany({
+          where: {
+            storeId: store.id,
+            adminId: id,
+          },
+        });
+        return { success: true, message: 'Team member removed from this store' };
+      }
     }
 
     const admin = await this.prisma.admin.findUnique({

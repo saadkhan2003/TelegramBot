@@ -45,11 +45,16 @@ export class SettingsController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('resourceType') resourceType?: string,
+    @Req() req?: any,
   ) {
+    const storeId = req?.headers?.['x-store-id'] as string;
+    const adminId = req?.admin?.sub;
     return this.settingsService.getAuditLogs({
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 50,
       resourceType,
+      storeId,
+      adminId,
     });
   }
 

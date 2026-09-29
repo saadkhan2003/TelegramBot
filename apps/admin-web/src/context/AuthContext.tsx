@@ -121,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data.accessToken) {
       localStorage.setItem('admin_token', data.accessToken);
       localStorage.setItem('admin_user', JSON.stringify(data.admin));
+      localStorage.removeItem('active_store_id');
       setToken(data.accessToken);
       setUser(data.admin);
       router.push('/');
