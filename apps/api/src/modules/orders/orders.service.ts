@@ -436,4 +436,37 @@ export class OrdersService {
 
     return result;
   }
+
+  async delete(id: string) {
+    const order = await this.prisma.order.findUnique({ where: { id } });
+    if (!order) throw new NotFoundException('Order not found');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.refund.deleteMany({ where: { orderId: id } });
+      await tx.warrantyClaim.deleteMany({ where: { orderId: id } });
+      await tx.referralCommission.deleteMany({ where: { orderId: id } });
+      await tx.supportTicket.updateMany({ where: { orderId: id }, data: { orderId: null } });
+      await tx.delivery.deleteMany({ where: { orderItem: { orderId: id } } });
+      await tx.orderItem.deleteMany({ where: { orderId: id } });
+      await tx.order.delete({ where: { id } });
+    });
+
+    return { success: true, id };
+  }
+
+  async bulkDelete(ids: string[]) {
+    if (!ids || ids.length === 0) return { success: true, count: 0 };
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.refund.deleteMany({ where: { orderId: { in: ids } } });
+      await tx.warrantyClaim.deleteMany({ where: { orderId: { in: ids } } });
+      await tx.referralCommission.deleteMany({ where: { orderId: { in: ids } } });
+      await tx.supportTicket.updateMany({ where: { orderId: { in: ids } }, data: { orderId: null } });
+      await tx.delivery.deleteMany({ where: { orderItem: { orderId: { in: ids } } } });
+      await tx.orderItem.deleteMany({ where: { orderId: { in: ids } } });
+      return tx.order.deleteMany({ where: { id: { in: ids } } });
+    });
+
+    return { success: true, count: result.count };
+  }
 }

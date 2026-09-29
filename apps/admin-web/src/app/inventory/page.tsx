@@ -218,7 +218,14 @@ export default function InventoryPage() {
     setBulkDeleting(true);
     try {
       const ids = Array.from(selectedIds);
-      await Promise.all(ids.map((id) => fetchApi(`/admin/inventory/${id}`, { method: 'DELETE' })));
+      try {
+        await fetchApi('/admin/inventory/bulk-delete', {
+          method: 'POST',
+          body: JSON.stringify({ ids }),
+        });
+      } catch {
+        await Promise.all(ids.map((id) => fetchApi(`/admin/inventory/${id}`, { method: 'DELETE' })));
+      }
       showToast(`✓ ${ids.length} inventory item(s) deleted successfully!`);
       setSelectedIds(new Set());
       setShowBulkDeleteConfirm(false);

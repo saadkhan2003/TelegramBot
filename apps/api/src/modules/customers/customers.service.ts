@@ -172,4 +172,78 @@ export class CustomersService {
       telegramUserId: updated.telegramUserId.toString(),
     };
   }
+
+  async delete(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Customer not found');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.updateMany({
+        where: { referredByUserId: id },
+        data: { referredByUserId: null },
+      });
+      await tx.referral.deleteMany({
+        where: { OR: [{ referrerUserId: id }, { referredUserId: id }] },
+      });
+      await tx.broadcastDelivery.deleteMany({ where: { userId: id } });
+      await tx.supportTicket.deleteMany({ where: { userId: id } });
+      await tx.warrantyClaim.deleteMany({ where: { userId: id } });
+      await tx.deposit.deleteMany({ where: { userId: id } });
+      const orders = await tx.order.findMany({ where: { userId: id }, select: { id: true } });
+      const orderIds = orders.map((o) => o.id);
+      if (orderIds.length > 0) {
+        await tx.refund.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.warrantyClaim.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.referralCommission.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.delivery.deleteMany({ where: { orderItem: { orderId: { in: orderIds } } } });
+        await tx.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.order.deleteMany({ where: { id: { in: orderIds } } });
+      }
+      const wallet = await tx.wallet.findUnique({ where: { userId: id } });
+      if (wallet) {
+        await tx.walletTransaction.deleteMany({ where: { walletId: wallet.id } });
+        await tx.wallet.delete({ where: { id: wallet.id } });
+      }
+      await tx.user.delete({ where: { id } });
+    });
+
+    return { success: true, id };
+  }
+
+  async bulkDelete(ids: string[]) {
+    if (!ids || ids.length === 0) return { success: true, count: 0 };
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.user.updateMany({
+        where: { referredByUserId: { in: ids } },
+        data: { referredByUserId: null },
+      });
+      await tx.referral.deleteMany({
+        where: { OR: [{ referrerUserId: { in: ids } }, { referredUserId: { in: ids } }] },
+      });
+      await tx.broadcastDelivery.deleteMany({ where: { userId: { in: ids } } });
+      await tx.supportTicket.deleteMany({ where: { userId: { in: ids } } });
+      await tx.warrantyClaim.deleteMany({ where: { userId: { in: ids } } });
+      await tx.deposit.deleteMany({ where: { userId: { in: ids } } });
+      const orders = await tx.order.findMany({ where: { userId: { in: ids } }, select: { id: true } });
+      const orderIds = orders.map((o) => o.id);
+      if (orderIds.length > 0) {
+        await tx.refund.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.warrantyClaim.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.referralCommission.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.delivery.deleteMany({ where: { orderItem: { orderId: { in: orderIds } } } });
+        await tx.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.order.deleteMany({ where: { id: { in: orderIds } } });
+      }
+      const wallets = await tx.wallet.findMany({ where: { userId: { in: ids } }, select: { id: true } });
+      const walletIds = wallets.map((w) => w.id);
+      if (walletIds.length > 0) {
+        await tx.walletTransaction.deleteMany({ where: { walletId: { in: walletIds } } });
+        await tx.wallet.deleteMany({ where: { id: { in: walletIds } } });
+      }
+      return tx.user.deleteMany({ where: { id: { in: ids } } });
+    });
+
+    return { success: true, count: result.count };
+  }
 }

@@ -158,4 +158,37 @@ export class InventoryService {
       include: { product: true },
     });
   }
+
+  async deleteItem(id: string) {
+    const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException('Inventory item not found');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.delivery.updateMany({
+        where: { inventoryItemId: id },
+        data: { inventoryItemId: null },
+      });
+      await tx.inventoryItem.delete({ where: { id } });
+    });
+
+    return { success: true, id };
+  }
+
+  async bulkDelete(ids: string[]) {
+    if (!ids || ids.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.delivery.updateMany({
+        where: { inventoryItemId: { in: ids } },
+        data: { inventoryItemId: null },
+      });
+      return tx.inventoryItem.deleteMany({
+        where: { id: { in: ids } },
+      });
+    });
+
+    return { success: true, count: result.count };
+  }
 }

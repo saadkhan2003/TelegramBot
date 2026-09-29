@@ -219,7 +219,14 @@ export default function ProductsPage() {
     setBulkDeleting(true);
     try {
       const ids = Array.from(selectedIds);
-      await Promise.all(ids.map((id) => fetchApi(`/admin/products/${id}`, { method: 'DELETE' })));
+      try {
+        await fetchApi('/admin/products/bulk-delete', {
+          method: 'POST',
+          body: JSON.stringify({ ids }),
+        });
+      } catch {
+        await Promise.all(ids.map((id) => fetchApi(`/admin/products/${id}`, { method: 'DELETE' })));
+      }
       showToast(`✓ ${ids.length} product(s) archived successfully!`);
       setSelectedIds(new Set());
       setShowBulkDeleteConfirm(false);

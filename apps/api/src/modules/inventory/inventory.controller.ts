@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
 import { InventoryStatus } from '@telegram-store/shared';
@@ -78,5 +78,17 @@ export class InventoryController {
     },
   ) {
     return this.inventoryService.updateItem(id, body);
+  }
+
+  @Delete(':id')
+  @RequirePermissions('inventory.create')
+  async deleteItem(@Param('id') id: string) {
+    return this.inventoryService.deleteItem(id);
+  }
+
+  @Post('bulk-delete')
+  @RequirePermissions('inventory.create')
+  async bulkDelete(@Body() body: { ids: string[] }) {
+    return this.inventoryService.bulkDelete(body.ids);
   }
 }

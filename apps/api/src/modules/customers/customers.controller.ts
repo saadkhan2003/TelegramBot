@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { CustomersService } from './customers.service';
 import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
 import { UserStatus } from '@telegram-store/shared';
@@ -41,4 +41,17 @@ export class CustomersController {
   ) {
     return this.customersService.updateStatus(id, body.status);
   }
+
+  @Delete(':id')
+  @RequirePermissions('admins.manage')
+  async delete(@Param('id') id: string) {
+    return this.customersService.delete(id);
+  }
+
+  @Post('bulk-delete')
+  @RequirePermissions('admins.manage')
+  async bulkDelete(@Body() body: { ids: string[] }) {
+    return this.customersService.bulkDelete(body.ids);
+  }
 }
+

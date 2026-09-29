@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { AdminAuthGuard, RequirePermissions } from '../auth/auth.guard';
 import { OrderStatus } from '@telegram-store/shared';
@@ -63,5 +63,17 @@ export class OrdersController {
       notes: body.notes,
       adminId: req.admin.sub,
     });
+  }
+
+  @Delete(':id')
+  @RequirePermissions('orders.refund')
+  async delete(@Param('id') id: string) {
+    return this.ordersService.delete(id);
+  }
+
+  @Post('bulk-delete')
+  @RequirePermissions('orders.refund')
+  async bulkDelete(@Body() body: { ids: string[] }) {
+    return this.ordersService.bulkDelete(body.ids);
   }
 }

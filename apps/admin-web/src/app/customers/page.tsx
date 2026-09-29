@@ -128,10 +128,23 @@ export default function CustomersPage() {
     setBulkDeleting(true);
     try {
       const ids = Array.from(selectedIds);
-      await Promise.all(ids.map((id) => fetchApi(`/admin/customers/${id}`, { method: 'DELETE' })));
+      try {
+        await fetchApi('/admin/customers/bulk-delete', {
+          method: 'POST',
+          body: JSON.stringify({ ids }),
+        });
+      } catch {
+        await Promise.all(ids.map((id) => fetchApi(`/admin/customers/${id}`, { method: 'DELETE' })));
+      }
       showToast(`✓ ${ids.length} customer(s) removed!`);
-      setSelectedIds(new Set()); setShowBulkDeleteConfirm(false); loadCustomers();
-    } catch (err: any) { showToast(`Bulk delete failed: ${err.message}`, 'error'); } finally { setBulkDeleting(false); }
+      setSelectedIds(new Set());
+      setShowBulkDeleteConfirm(false);
+      loadCustomers();
+    } catch (err: any) {
+      showToast(`Bulk delete failed: ${err.message}`, 'error');
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   return (

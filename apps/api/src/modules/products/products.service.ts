@@ -149,4 +149,18 @@ export class ProductsService {
       data: { status: ProductStatus.ARCHIVED },
     });
   }
+
+  async bulkArchive(ids: string[], storeId?: string) {
+    if (!ids || ids.length === 0) return { success: true, count: 0 };
+    const where: any = { id: { in: ids } };
+    if (storeId) {
+      where.OR = [{ storeId }, { storeId: null }];
+    }
+    const result = await this.prisma.product.updateMany({
+      where,
+      data: { status: ProductStatus.ARCHIVED },
+    });
+    return { success: true, count: result.count };
+  }
 }
+

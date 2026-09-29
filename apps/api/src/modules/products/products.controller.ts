@@ -57,4 +57,11 @@ export class ProductsController {
     const storeId = req.headers['x-store-id'] as string | undefined;
     return this.productsService.archive(id, storeId);
   }
+
+  @Post('bulk-delete')
+  @RequirePermissions('products.edit')
+  async bulkDelete(@Body() body: { ids: string[] }, @Req() req: any) {
+    const storeId = req.headers['x-store-id'] as string | undefined;
+    return this.productsService.bulkArchive(body.ids, storeId);
+  }
 }

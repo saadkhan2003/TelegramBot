@@ -165,10 +165,23 @@ function OrdersContent() {
     setBulkDeleting(true);
     try {
       const ids = Array.from(selectedIds);
-      await Promise.all(ids.map((id) => fetchApi(`/admin/orders/${id}`, { method: 'DELETE' })));
+      try {
+        await fetchApi('/admin/orders/bulk-delete', {
+          method: 'POST',
+          body: JSON.stringify({ ids }),
+        });
+      } catch {
+        await Promise.all(ids.map((id) => fetchApi(`/admin/orders/${id}`, { method: 'DELETE' })));
+      }
       showToast(`✓ ${ids.length} order(s) deleted!`);
-      setSelectedIds(new Set()); setShowBulkDeleteConfirm(false); loadOrders();
-    } catch (err: any) { showToast(`Bulk delete failed: ${err.message}`, 'error'); } finally { setBulkDeleting(false); }
+      setSelectedIds(new Set());
+      setShowBulkDeleteConfirm(false);
+      loadOrders();
+    } catch (err: any) {
+      showToast(`Bulk delete failed: ${err.message}`, 'error');
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   return (
