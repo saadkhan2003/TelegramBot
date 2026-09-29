@@ -57,6 +57,12 @@ function getComponentIcon(type: BotComponent['type'], isBold?: boolean) {
   if (type === 'social_links') return <Share2 className="h-3.5 w-3.5 text-[#107c41]" />;
   if (type === 'numbered_list') return <ListOrdered className="h-3.5 w-3.5 text-[#8764b8]" />;
   if (type === 'bullet_list') return <List className="h-3.5 w-3.5 text-[#8764b8]" />;
+  if (type === 'form_input') return <Info className="h-3.5 w-3.5 text-[#0078d4]" />;
+  if (type === 'ai_copilot') return <HelpCircle className="h-3.5 w-3.5 text-[#8764b8]" />;
+  if (type === 'carousel') return <Columns className="h-3.5 w-3.5 text-[#107c41]" />;
+  if (type === 'video_note') return <ImageIcon className="h-3.5 w-3.5 text-[#d83b01]" />;
+  if (type === 'audio') return <Info className="h-3.5 w-3.5 text-[#5288c1]" />;
+  if (type === 'stars_invoice') return <Square className="h-3.5 w-3.5 text-amber-500" />;
   if (type === 'divider') return <Minus className="h-3.5 w-3.5 text-[#8a8886]" />;
   if (type === 'spacer') return <MoveVertical className="h-3.5 w-3.5 text-[#a19f9d]" />;
   if (type === 'button') return <Square className="h-3.5 w-3.5 text-[#d83b01]" />;
@@ -182,6 +188,48 @@ function renderComponentPreview(comp: BotComponent) {
           )}
         </div>
       );
+    case 'form_input':
+      return (
+        <div className="text-xs text-[#0078d4] truncate flex items-center gap-1.5">
+          <span className="font-bold">📝 Intake Form:</span>
+          <span className="text-[#323130] truncate">{comp.formConfig?.promptText || 'User prompt'}</span>
+        </div>
+      );
+    case 'ai_copilot':
+      return (
+        <div className="text-xs text-[#8764b8] truncate flex items-center gap-1.5">
+          <span className="font-bold">✨ AI Copilot:</span>
+          <span className="text-[#605e5c] truncate">Context: {comp.aiConfig?.knowledgeContext || 'catalog'}</span>
+        </div>
+      );
+    case 'carousel':
+      return (
+        <div className="text-xs text-[#107c41] truncate flex items-center gap-1.5">
+          <span className="font-bold">🎠 Product Slider:</span>
+          <span className="text-[#605e5c] truncate">{comp.carouselSlides?.length || 0} slides</span>
+        </div>
+      );
+    case 'video_note':
+      return (
+        <div className="text-xs text-[#d83b01] truncate flex items-center gap-1.5">
+          <span className="font-bold">🎥 Video Note (Round):</span>
+          <span className="text-[#605e5c] truncate">{comp.caption || '15s video bubble'}</span>
+        </div>
+      );
+    case 'audio':
+      return (
+        <div className="text-xs text-[#5288c1] truncate flex items-center gap-1.5">
+          <span className="font-bold">🎙 Voice Memo:</span>
+          <span className="text-[#605e5c] truncate">{comp.caption || 'Audio message'}</span>
+        </div>
+      );
+    case 'stars_invoice':
+      return (
+        <div className="text-xs text-amber-600 truncate flex items-center gap-1.5">
+          <span className="font-bold">⭐ Stars Invoice:</span>
+          <span className="text-[#323130] truncate">{comp.invoiceConfig?.title} ({comp.invoiceConfig?.priceStars || 250} Stars)</span>
+        </div>
+      );
     default:
       return <div className="text-xs text-[#605e5c]">{comp.type}</div>;
   }
@@ -199,6 +247,7 @@ export default function Canvas({
 }: CanvasProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [viewMode, setViewMode] = useState<'split' | 'structure' | 'preview'>('split');
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -221,38 +270,55 @@ export default function Canvas({
           </span>
         </div>
 
-        {/* View Switcher */}
-        <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-[4px] border border-[#edebe9]">
+        {/* Right side controls: Heatmap Toggle + View Switcher */}
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setViewMode('split')}
-            className={`px-2.5 py-1 text-xs font-medium rounded-[3px] transition cursor-pointer flex items-center gap-1.5 ${
-              viewMode === 'split' ? 'bg-white text-[#0078d4] shadow-xs' : 'text-[#605e5c] hover:text-[#323130]'
+            onClick={() => setShowHeatmap((prev) => !prev)}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-[4px] border transition cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+              showHeatmap
+                ? 'bg-amber-500 text-black border-amber-600 font-bold'
+                : 'bg-white hover:bg-[#f3f2f1] text-[#323130] border-[#d2d0ce]'
             }`}
+            title="Toggle Button Click & CTR Heatmap Overlays"
           >
-            <Columns className="h-3 w-3" />
-            <span className="hidden sm:inline">Split View</span>
+            <span>🔥</span>
+            <span className="hidden sm:inline">Heatmap</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('structure')}
-            className={`px-2.5 py-1 text-xs font-medium rounded-[3px] transition cursor-pointer flex items-center gap-1.5 ${
-              viewMode === 'structure' ? 'bg-white text-[#0078d4] shadow-xs' : 'text-[#605e5c] hover:text-[#323130]'
-            }`}
-          >
-            <Layers className="h-3 w-3" />
-            <span>Structure</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('preview')}
-            className={`px-2.5 py-1 text-xs font-medium rounded-[3px] transition cursor-pointer flex items-center gap-1.5 ${
-              viewMode === 'preview' ? 'bg-white text-[#0078d4] shadow-xs' : 'text-[#605e5c] hover:text-[#323130]'
-            }`}
-          >
-            <Eye className="h-3 w-3" />
-            <span>Live Telegram</span>
-          </button>
+
+          {/* View Switcher */}
+          <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-[4px] border border-[#edebe9]">
+            <button
+              type="button"
+              onClick={() => setViewMode('split')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-[3px] transition cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'split' ? 'bg-white text-[#0078d4] shadow-xs' : 'text-[#605e5c] hover:text-[#323130]'
+              }`}
+            >
+              <Columns className="h-3 w-3" />
+              <span className="hidden sm:inline">Split View</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('structure')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-[3px] transition cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'structure' ? 'bg-white text-[#0078d4] shadow-xs' : 'text-[#605e5c] hover:text-[#323130]'
+              }`}
+            >
+              <Layers className="h-3 w-3" />
+              <span>Structure</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('preview')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-[3px] transition cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'preview' ? 'bg-white text-[#0078d4] shadow-xs' : 'text-[#605e5c] hover:text-[#323130]'
+              }`}
+            >
+              <Eye className="h-3 w-3" />
+              <span>Live Telegram</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -415,6 +481,7 @@ export default function Canvas({
                 selectedId={selectedId}
                 onSelect={onSelect}
                 showDeviceFrame={viewMode === 'preview'}
+                showHeatmap={showHeatmap}
               />
             </div>
           </div>

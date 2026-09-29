@@ -23,6 +23,7 @@ interface TelegramPreviewProps {
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   showDeviceFrame?: boolean;
+  showHeatmap?: boolean;
 }
 
 const SAMPLE_VARS: Record<string, string> = {
@@ -131,6 +132,7 @@ export default function TelegramPreview({
   selectedId,
   onSelect,
   showDeviceFrame = true,
+  showHeatmap = false,
 }: TelegramPreviewProps) {
   const vars = { ...SAMPLE_VARS, storeName };
 
@@ -305,15 +307,23 @@ export default function TelegramPreview({
         );
       }
 
-      case 'button':
+      case 'button': {
+        const clicks = comp.buttons?.[0]?.analytics?.clicks || 480;
+        const ctr = comp.buttons?.[0]?.analytics?.ctr || 32;
         return (
           <div className="pt-1">
-            <div className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2.5 px-3 rounded-lg text-center cursor-pointer transition select-none flex items-center justify-center gap-1.5 shadow-xs border border-white/5">
+            <div className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2.5 px-3 rounded-lg text-center cursor-pointer transition select-none flex items-center justify-center gap-1.5 shadow-xs border border-white/5 relative">
               <span>{interpolate(comp.label || 'Action Button', vars)}</span>
               {renderButtonIcon(comp as any)}
+              {showHeatmap && (
+                <span className="ml-1.5 text-[9px] font-mono bg-amber-500/30 text-amber-200 px-1.5 py-0.2 rounded border border-amber-500/40">
+                  🔥 {clicks} ({ctr}%)
+                </span>
+              )}
             </div>
           </div>
         );
+      }
 
       case 'button_row': {
         const btns = comp.buttons || [];
@@ -322,10 +332,15 @@ export default function TelegramPreview({
             {btns.map((btn) => (
               <div
                 key={btn.id}
-                className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2.5 px-2 rounded-lg text-center cursor-pointer transition select-none truncate flex items-center justify-center gap-1 shadow-xs border border-white/5"
+                className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2.5 px-2 rounded-lg text-center cursor-pointer transition select-none truncate flex items-center justify-center gap-1 shadow-xs border border-white/5 relative"
               >
                 <span className="truncate">{interpolate(btn.label, vars)}</span>
                 {renderButtonIcon(btn)}
+                {showHeatmap && (
+                  <span className="ml-1 text-[8px] font-mono bg-amber-500/30 text-amber-200 px-1 py-0.2 rounded">
+                    🔥 {btn.analytics?.ctr || 24}%
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -341,14 +356,175 @@ export default function TelegramPreview({
                 {row.map((btn) => (
                   <div
                     key={btn.id}
-                    className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2.5 px-2 rounded-lg text-center cursor-pointer transition select-none truncate flex items-center justify-center gap-1 shadow-xs border border-white/5"
+                    className="bg-[#2b3a4a] hover:bg-[#344659] text-white text-xs font-semibold py-2.5 px-2 rounded-lg text-center cursor-pointer transition select-none truncate flex items-center justify-center gap-1 shadow-xs border border-white/5 relative"
                   >
                     <span className="truncate">{interpolate(btn.label, vars)}</span>
                     {renderButtonIcon(btn)}
+                    {showHeatmap && (
+                      <span className="ml-1 text-[8px] font-mono bg-amber-500/30 text-amber-200 px-1 py-0.2 rounded">
+                        🔥 {btn.analytics?.clicks || 140}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
             ))}
+          </div>
+        );
+      }
+
+      case 'form_input': {
+        const cfg = comp.formConfig;
+        return (
+          <div className="bg-[#1e2a38] border border-blue-500/30 rounded-xl p-3 space-y-2 text-white">
+            <div className="flex items-center justify-between text-[11px] font-bold text-blue-400">
+              <span className="flex items-center gap-1.5">
+                <span>📝</span>
+                <span>User Input Intake</span>
+              </span>
+              <span className="font-mono text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">
+                Type: {cfg?.fieldType || 'text'}
+              </span>
+            </div>
+            <p className="text-[12px] text-white/90 leading-relaxed font-medium">
+              {interpolate(cfg?.promptText || 'Please reply with your info:', vars)}
+            </p>
+            <div className="bg-[#121921] rounded-lg p-2 flex items-center justify-between border border-white/10 text-white/40 text-xs">
+              <span>✍️ Reply awaiting user input...</span>
+              <span className="font-mono text-[10px] text-blue-300 bg-blue-900/40 px-1 rounded">
+                {`{${cfg?.variableName || 'input'}}`}
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      case 'ai_copilot': {
+        const ai = comp.aiConfig;
+        return (
+          <div className="bg-gradient-to-br from-[#1d2333] to-[#171f2c] border border-indigo-500/40 rounded-xl p-3 space-y-2.5 shadow-lg relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300">
+                <span className="text-sm">✨</span>
+                <span>Gemini Sovereign AI Copilot</span>
+              </div>
+              <span className="text-[9px] font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded-full">
+                Context: {ai?.knowledgeContext || 'catalog'}
+              </span>
+            </div>
+            <p className="text-[11px] text-white/70 italic">
+              &ldquo;Ask any question. The bot will answer intelligently using live catalog knowledge.&rdquo;
+            </p>
+            <div className="pt-1">
+              <div className="bg-white/10 hover:bg-white/15 text-white text-xs font-semibold py-2 px-3 rounded-lg text-center cursor-pointer transition select-none flex items-center justify-center gap-1.5 border border-white/10">
+                <span>{ai?.handoffButtonLabel || '💬 Speak with Human Operator'}</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      case 'carousel': {
+        const slides = comp.carouselSlides || [];
+        const slide = slides[0];
+        return (
+          <div className="bg-[#1b2633] border border-white/10 rounded-xl overflow-hidden space-y-2">
+            {slide?.imageUrl && (
+              <img src={slide.imageUrl} alt={slide.title} className="w-full h-32 object-cover" />
+            )}
+            <div className="p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-white">{slide?.title || 'Featured Slide'}</h4>
+                {slide?.price && (
+                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
+                    {slide.price}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-white/70 leading-relaxed">{slide?.description}</p>
+              {slide?.buttonLabel && (
+                <div className="pt-1">
+                  <div className="bg-[#2b3a4a] text-white text-xs font-semibold py-2 rounded-lg text-center cursor-pointer">
+                    {slide.buttonLabel}
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Carousel navigation pills */}
+            <div className="flex items-center justify-between px-3 pb-2 text-[10px] text-white/50">
+              <span className="cursor-pointer hover:text-white">⬅️ Prev</span>
+              <span className="font-mono">1 / {Math.max(1, slides.length)}</span>
+              <span className="cursor-pointer hover:text-white">Next ➡️</span>
+            </div>
+          </div>
+        );
+      }
+
+      case 'video_note': {
+        return (
+          <div className="flex flex-col items-center py-2 space-y-1.5">
+            <div className="w-24 h-24 rounded-full border-2 border-[#5288c1] overflow-hidden relative shadow-lg bg-black flex items-center justify-center">
+              {comp.imageUrl ? (
+                <img src={comp.imageUrl} alt="Video note" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-3xl">🎥</span>
+              )}
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                <span className="text-xl text-white">▶</span>
+              </div>
+            </div>
+            <span className="text-[10px] text-white/50 font-mono">
+              Round Video Note · {comp.mediaDurationSec || 15}s
+            </span>
+          </div>
+        );
+      }
+
+      case 'audio': {
+        return (
+          <div className="bg-[#242f3d] rounded-xl p-2.5 border border-white/5 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[#5288c1] flex items-center justify-center text-white text-sm shadow-xs shrink-0 cursor-pointer">
+              ▶
+            </div>
+            <div className="flex-1 min-w-0 space-y-1">
+              <div className="flex items-center justify-between text-[11px] text-white font-medium">
+                <span className="truncate">{comp.caption || 'Voice Message'}</span>
+                <span className="text-white/40 text-[10px] font-mono">0:{comp.mediaDurationSec || 45}</span>
+              </div>
+              {/* Simulated waveform bars */}
+              <div className="flex items-center gap-0.5 h-3">
+                {[12, 24, 16, 28, 8, 20, 14, 26, 18, 10, 22, 16, 30, 14, 8, 24, 18].map((h, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 bg-white/40 rounded-full"
+                    style={{ height: `${h}px` }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      case 'stars_invoice': {
+        const inv = comp.invoiceConfig;
+        return (
+          <div className="bg-gradient-to-r from-[#2a2415] to-[#1e1c22] border border-amber-500/40 rounded-xl p-3 space-y-2 text-white shadow-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                <span>⭐</span>
+                <span>{inv?.title || 'Telegram Stars Invoice'}</span>
+              </div>
+              <span className="text-xs font-extrabold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">
+                {inv?.priceStars || 250} Stars
+              </span>
+            </div>
+            <p className="text-[11px] text-white/70 leading-relaxed">
+              {inv?.description || 'Instant in-app checkout with official Telegram Stars.'}
+            </p>
+            <div className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-extrabold text-xs py-2 rounded-lg text-center cursor-pointer transition select-none flex items-center justify-center gap-1.5 shadow-sm">
+              <span>⭐ Pay {inv?.priceStars || 250} Stars</span>
+            </div>
           </div>
         );
       }

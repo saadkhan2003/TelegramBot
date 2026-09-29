@@ -21,6 +21,14 @@ import {
   Check,
   PanelLeftClose,
   PanelLeftOpen,
+  GitFork,
+  Zap,
+  Flame,
+  Activity,
+  Hash,
+  MessageSquare,
+  Clock,
+  ArrowRight,
 } from 'lucide-react';
 import { useNavigation } from '../../context/NavigationContext';
 import { fetchApi } from '../../lib/api';
@@ -28,11 +36,13 @@ import {
   DEFAULT_SCREENS,
   BotScreen,
   BotComponent,
+  ScreenTriggers,
   uid,
 } from '../../lib/botBuilderTypes';
 import ComponentPalette from '../../components/bot-builder/ComponentPalette';
 import Canvas from '../../components/bot-builder/Canvas';
 import Inspector from '../../components/bot-builder/Inspector';
+import FlowCanvas from '../../components/bot-builder/FlowCanvas';
 
 export default function BotBuilderPage() {
   const [screensList, setScreensList] = useState<BotScreen[]>(() => DEFAULT_SCREENS);
@@ -74,6 +84,16 @@ export default function BotBuilderPage() {
   // Templates Modal State
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
 
+  // Flow Canvas & Studio View Switcher State
+  const [viewMode, setViewMode] = useState<'studio' | 'flow'>('studio');
+  const [showHeatmap, setShowHeatmap] = useState<boolean>(false);
+
+  // Screen Triggers & Automation Modal State
+  const [isTriggersModalOpen, setIsTriggersModalOpen] = useState(false);
+  const [triggerKeywords, setTriggerKeywords] = useState('');
+  const [triggerSlashCommands, setTriggerSlashCommands] = useState('');
+  const [triggerEvent, setTriggerEvent] = useState<ScreenTriggers['event']>('none');
+
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -90,7 +110,7 @@ export default function BotBuilderPage() {
     async function loadScreens() {
       try {
         setIsLoading(true);
-        const saved = await fetchApi<Record<string, { components: BotComponent[]; meta?: any }>>(
+        const saved = await fetchApi<Record<string, { components: BotComponent[]; meta?: any; triggers?: ScreenTriggers }>>(
           '/admin/bot-screens',
         );
 
@@ -107,9 +127,11 @@ export default function BotBuilderPage() {
               loadedData[key] = val.components;
 
               const existingIdx = loadedScreens.findIndex((s) => s.key === key);
+              const triggers = (val as any).triggers || val.meta?.triggers;
               if (existingIdx >= 0) {
                 if (val.meta?.label) loadedScreens[existingIdx].label = val.meta.label;
                 if (val.meta?.icon) loadedScreens[existingIdx].icon = val.meta.icon;
+                if (triggers) loadedScreens[existingIdx].triggers = triggers;
               } else {
                 loadedScreens.push({
                   key,
@@ -119,6 +141,7 @@ export default function BotBuilderPage() {
                   category: val.meta?.category || 'custom',
                   isCustom: true,
                   components: val.components,
+                  triggers,
                 });
               }
             }
@@ -141,6 +164,15 @@ export default function BotBuilderPage() {
   const selectedComponent =
     activeComponents.find((c) => c.id === selectedComponentId) || null;
 
+  // Sync triggers state whenever active screen changes
+  useEffect(() => {
+    if (activeScreen) {
+      setTriggerKeywords((activeScreen.triggers?.keywords || []).join(', '));
+      setTriggerSlashCommands((activeScreen.triggers?.slashCommands || []).join(', '));
+      setTriggerEvent(activeScreen.triggers?.event || 'none');
+    }
+  }, [activeScreenKey, screensList]);
+
   // Filter screens in dropdown
   const filteredScreens = screensList.filter(
     (s) =>
@@ -154,7 +186,7 @@ export default function BotBuilderPage() {
     setActiveLeftTab('inspector');
   };
 
-  // Save current active screen layout
+  // Save current active screen layout & triggers
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -164,12 +196,14 @@ export default function BotBuilderPage() {
         method: 'PUT',
         body: JSON.stringify({
           components: activeComponents,
+          triggers: activeScreen.triggers,
           meta: {
             label: activeScreen.label,
             icon: activeScreen.icon,
             description: activeScreen.description,
             category: activeScreen.category,
             isCustom: activeScreen.isCustom,
+            triggers: activeScreen.triggers,
           },
         }),
       });
@@ -190,6 +224,37 @@ export default function BotBuilderPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Save triggers from modal
+  const handleSaveTriggers = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const keywords = triggerKeywords
+      .split(',')
+      .map((k) => k.trim().toLowerCase())
+      .filter(Boolean);
+    const slashCommands = triggerSlashCommands
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => (s.startsWith('/') ? s : `/${s}`));
+
+    const newTriggers: ScreenTriggers = {
+      keywords,
+      slashCommands,
+      event: triggerEvent,
+    };
+
+    setScreensList((prev) =>
+      prev.map((s) => (s.key === activeScreenKey ? { ...s, triggers: newTriggers } : s)),
+    );
+    setIsDirty(true);
+    setIsTriggersModalOpen(false);
+    setStatusMessage({
+      type: 'success',
+      text: `⚡ Triggers updated for "${activeScreen.label}"! Click "Save Layout" to publish.`,
+    });
+    setTimeout(() => setStatusMessage(null), 4000);
   };
 
   // Create new custom screen
@@ -560,19 +625,87 @@ export default function BotBuilderPage() {
             )}
           </button>
 
-          {/* Toggle Left Studio Tools Panel */}
+          {/* Toggle Left Studio Tools Panel (Only in Studio mode) */}
+          {viewMode === 'studio' && (
+            <button
+              type="button"
+              onClick={() => setIsStudioPanelCollapsed((prev) => !prev)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium border transition cursor-pointer shadow-2xs ${
+                isStudioPanelCollapsed
+                  ? 'bg-[#eff6fc] text-[#0078d4] border-[#c7e0f4] font-bold'
+                  : 'bg-white hover:bg-[#f3f2f1] text-[#323130] border-[#d2d0ce]'
+              }`}
+              title={isStudioPanelCollapsed ? "Show Studio Elements & Tools panel" : "Hide Studio Tools to maximize preview canvas"}
+            >
+              <Sliders className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{isStudioPanelCollapsed ? 'Show Tools' : 'Hide Tools'}</span>
+            </button>
+          )}
+
+          {/* View Mode Switcher: Studio Canvas vs ManyChat Flow Blueprint */}
+          <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-md border border-[#d2d0ce] ml-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('studio')}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition cursor-pointer ${
+                viewMode === 'studio'
+                  ? 'bg-white text-[#0078d4] shadow-xs'
+                  : 'text-[#605e5c] hover:text-[#201f1e]'
+              }`}
+              title="Elementor-style 2-zone Canvas Studio"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span>Studio</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('flow')}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition cursor-pointer ${
+                viewMode === 'flow'
+                  ? 'bg-white text-purple-600 shadow-xs'
+                  : 'text-[#605e5c] hover:text-[#201f1e]'
+              }`}
+              title="ManyChat-style Visual Flow Blueprint"
+            >
+              <GitFork className="h-3.5 w-3.5 text-purple-600" />
+              <span>Flow Graph</span>
+            </button>
+          </div>
+
+          {/* Screen Triggers & Keywords Button */}
           <button
             type="button"
-            onClick={() => setIsStudioPanelCollapsed((prev) => !prev)}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium border transition cursor-pointer shadow-2xs ${
-              isStudioPanelCollapsed
-                ? 'bg-[#eff6fc] text-[#0078d4] border-[#c7e0f4] font-bold'
+            onClick={() => {
+              setTriggerKeywords((activeScreen.triggers?.keywords || []).join(', '));
+              setTriggerSlashCommands((activeScreen.triggers?.slashCommands || []).join(', '));
+              setTriggerEvent(activeScreen.triggers?.event || 'none');
+              setIsTriggersModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-white hover:bg-[#fff9e6] text-[#b25e00] border border-[#f9df99] text-xs font-bold transition cursor-pointer shadow-2xs"
+            title="Configure Keyword Triggers, Slash Commands, and Lifecycle Sequences"
+          >
+            <Zap className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+            <span className="hidden sm:inline">Triggers</span>
+            {(activeScreen.triggers?.keywords?.length || 0) > 0 && (
+              <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded-full font-mono font-bold">
+                {activeScreen.triggers?.keywords?.length}
+              </span>
+            )}
+          </button>
+
+          {/* Button Click & CTR Heatmap Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowHeatmap((prev) => !prev)}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold transition cursor-pointer border shadow-2xs ${
+              showHeatmap
+                ? 'bg-amber-500 text-black border-amber-600'
                 : 'bg-white hover:bg-[#f3f2f1] text-[#323130] border-[#d2d0ce]'
             }`}
-            title={isStudioPanelCollapsed ? "Show Studio Elements & Tools panel" : "Hide Studio Tools to maximize preview canvas"}
+            title="Toggle live button click counts and CTR heatmaps"
           >
-            <Sliders className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{isStudioPanelCollapsed ? 'Show Tools' : 'Hide Tools'}</span>
+            <Flame className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Heatmap</span>
           </button>
         </div>
 
@@ -626,6 +759,7 @@ export default function BotBuilderPage() {
         {screensList.map((s) => {
           const isSelected = s.key === activeScreenKey;
           const count = (screensData[s.key] || []).length;
+          const hasTriggers = Boolean(s.triggers?.keywords?.length || s.triggers?.slashCommands?.length);
           return (
             <button
               key={s.key}
@@ -642,6 +776,11 @@ export default function BotBuilderPage() {
             >
               <span className="text-sm">{s.icon}</span>
               <span className="font-medium">{s.label}</span>
+              {hasTriggers && (
+                <span className="text-amber-500 font-bold text-[11px]" title={`Triggers: ${s.triggers?.keywords?.join(', ')}`}>
+                  ⚡
+                </span>
+              )}
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                   isSelected
@@ -691,112 +830,129 @@ export default function BotBuilderPage() {
         </div>
       )}
 
-      {/* 2-Zone Spacious Studio (Elementor Architecture: Left Tool Panel + Spacious Workspace) */}
-      <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        {/* Floating Re-open Button when Left Studio Panel is collapsed */}
-        {isStudioPanelCollapsed && (
-          <button
-            type="button"
-            onClick={() => setIsStudioPanelCollapsed(false)}
-            className="absolute left-3 top-3 z-30 flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#eff6fc] text-[#0078d4] font-bold text-xs rounded-lg shadow-md border border-[#c7e0f4] cursor-pointer transition animate-in fade-in"
-            title="Open elements & tools panel"
-          >
-            <PanelLeftOpen className="h-4 w-4" />
-            <span>Show Elements &amp; Inspector</span>
-          </button>
-        )}
-
-        {/* Zone 1: Unified Left Studio Panel holding Elements & Inspector */}
-        <aside
-          className={`bg-white border-r border-[#edebe9] flex flex-col h-full shrink-0 shadow-xs z-20 transition-all duration-300 ease-in-out ${
-            isStudioPanelCollapsed
-              ? 'w-0 opacity-0 pointer-events-none border-r-0 overflow-hidden'
-              : 'w-80 sm:w-[340px] opacity-100'
-          }`}
-        >
-          {/* Sub-tabs header: [+ Elements] vs [⚙ Edit Block] */}
-          <div className="bg-[#faf9f8] border-b border-[#edebe9] p-1.5 flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveLeftTab('elements')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded transition cursor-pointer ${
-                activeLeftTab === 'elements'
-                  ? 'bg-white text-[#0078d4] shadow-xs'
-                  : 'text-[#605e5c] hover:text-[#201f1e]'
-              }`}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-              <span>+ Elements</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveLeftTab('inspector')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded transition cursor-pointer relative ${
-                activeLeftTab === 'inspector'
-                  ? 'bg-white text-[#0078d4] shadow-xs'
-                  : 'text-[#605e5c] hover:text-[#201f1e]'
-              }`}
-            >
-              <Sliders className="h-3.5 w-3.5" />
-              <span>⚙ Edit Block</span>
-              {selectedComponent && (
-                <span className="w-2 h-2 rounded-full bg-[#0078d4] absolute top-1 right-2" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsStudioPanelCollapsed(true)}
-              className="p-1 rounded text-[#605e5c] hover:text-[#201f1e] hover:bg-[#edebe9] transition cursor-pointer ml-0.5"
-              title="Collapse studio panel"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Panel Content */}
-          <div className="flex-1 overflow-hidden">
-            {activeLeftTab === 'elements' ? (
-              <ComponentPalette onAdd={handleAddComponent} />
-            ) : (
-              <div className="h-full flex flex-col">
-                <div className="px-3 py-1.5 bg-[#eff6fc] border-b border-[#c7e0f4] flex items-center justify-between text-xs shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setActiveLeftTab('elements')}
-                    className="text-[#0078d4] hover:underline flex items-center gap-1 font-bold cursor-pointer"
-                  >
-                    <ArrowLeft className="h-3 w-3" />
-                    <span>Back to Elements</span>
-                  </button>
-                  <span className="text-[10px] text-[#605e5c] font-medium">Click any block to switch</span>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <Inspector
-                    component={selectedComponent}
-                    availableScreens={screensList.map((s) => ({ key: s.key, label: s.label, icon: s.icon }))}
-                    onChange={handleUpdateComponent}
-                    onDelete={() => selectedComponentId && handleDeleteComponent(selectedComponentId)}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </aside>
-
-        {/* Zone 2: Spacious Main Workspace (Flex-1) */}
-        <main className="flex-1 flex flex-col h-full bg-[#f0f2f5] overflow-hidden min-w-0">
-          <Canvas
-            components={activeComponents}
-            selectedId={selectedComponentId}
-            onSelect={handleSelectComponent}
-            onReorder={handleReorder}
-            onDelete={handleDeleteComponent}
-            onMoveUp={handleMoveUp}
-            onMoveDown={handleMoveDown}
-            storeName="Delux Store"
+      {/* Main Workspace Mode: Flow Canvas (Blueprint) or 2-Zone Studio Canvas */}
+      {viewMode === 'flow' ? (
+        <div className="flex-1 flex overflow-hidden min-h-0 relative">
+          <FlowCanvas
+            screens={screensList}
+            screensData={screensData}
+            activeScreenKey={activeScreenKey}
+            onSelectScreen={(key) => {
+              setActiveScreenKey(key);
+              setViewMode('studio');
+            }}
+            onNewScreen={() => setIsNewScreenModalOpen(true)}
+            showHeatmap={showHeatmap}
           />
-        </main>
-      </div>
+        </div>
+      ) : (
+        /* 2-Zone Spacious Studio (Elementor Architecture: Left Tool Panel + Spacious Workspace) */
+        <div className="flex-1 flex overflow-hidden min-h-0 relative">
+          {/* Floating Re-open Button when Left Studio Panel is collapsed */}
+          {isStudioPanelCollapsed && (
+            <button
+              type="button"
+              onClick={() => setIsStudioPanelCollapsed(false)}
+              className="absolute left-3 top-3 z-30 flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#eff6fc] text-[#0078d4] font-bold text-xs rounded-lg shadow-md border border-[#c7e0f4] cursor-pointer transition animate-in fade-in"
+              title="Open elements & tools panel"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+              <span>Show Elements &amp; Inspector</span>
+            </button>
+          )}
+
+          {/* Zone 1: Unified Left Studio Panel holding Elements & Inspector */}
+          <aside
+            className={`bg-white border-r border-[#edebe9] flex flex-col h-full shrink-0 shadow-xs z-20 transition-all duration-300 ease-in-out ${
+              isStudioPanelCollapsed
+                ? 'w-0 opacity-0 pointer-events-none border-r-0 overflow-hidden'
+                : 'w-80 sm:w-[340px] opacity-100'
+            }`}
+          >
+            {/* Sub-tabs header: [+ Elements] vs [⚙ Edit Block] */}
+            <div className="bg-[#faf9f8] border-b border-[#edebe9] p-1.5 flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveLeftTab('elements')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded transition cursor-pointer ${
+                  activeLeftTab === 'elements'
+                    ? 'bg-white text-[#0078d4] shadow-xs'
+                    : 'text-[#605e5c] hover:text-[#201f1e]'
+                }`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span>+ Elements</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveLeftTab('inspector')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded transition cursor-pointer relative ${
+                  activeLeftTab === 'inspector'
+                    ? 'bg-white text-[#0078d4] shadow-xs'
+                    : 'text-[#605e5c] hover:text-[#201f1e]'
+                }`}
+              >
+                <Sliders className="h-3.5 w-3.5" />
+                <span>⚙ Edit Block</span>
+                {selectedComponent && (
+                  <span className="w-2 h-2 rounded-full bg-[#0078d4] absolute top-1 right-2" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsStudioPanelCollapsed(true)}
+                className="p-1 rounded text-[#605e5c] hover:text-[#201f1e] hover:bg-[#edebe9] transition cursor-pointer ml-0.5"
+                title="Collapse studio panel"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Panel Content */}
+            <div className="flex-1 overflow-hidden">
+              {activeLeftTab === 'elements' ? (
+                <ComponentPalette onAdd={handleAddComponent} />
+              ) : (
+                <div className="h-full flex flex-col">
+                  <div className="px-3 py-1.5 bg-[#eff6fc] border-b border-[#c7e0f4] flex items-center justify-between text-xs shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setActiveLeftTab('elements')}
+                      className="text-[#0078d4] hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                    >
+                      <ArrowLeft className="h-3 w-3" />
+                      <span>Back to Elements</span>
+                    </button>
+                    <span className="text-[10px] text-[#605e5c] font-medium">Click any block to switch</span>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <Inspector
+                      component={selectedComponent}
+                      availableScreens={screensList.map((s) => ({ key: s.key, label: s.label, icon: s.icon }))}
+                      onChange={handleUpdateComponent}
+                      onDelete={() => selectedComponentId && handleDeleteComponent(selectedComponentId)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+
+          {/* Zone 2: Spacious Main Workspace (Flex-1) */}
+          <main className="flex-1 flex flex-col h-full bg-[#f0f2f5] overflow-hidden min-w-0">
+            <Canvas
+              components={activeComponents}
+              selectedId={selectedComponentId}
+              onSelect={handleSelectComponent}
+              onReorder={handleReorder}
+              onDelete={handleDeleteComponent}
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
+              storeName="Delux Store"
+            />
+          </main>
+        </div>
+      )}
 
       {/* Create New Screen Modal */}
       {isNewScreenModalOpen && (
@@ -978,6 +1134,150 @@ export default function BotBuilderPage() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Screen Triggers & Automation Modal */}
+      {isTriggersModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border border-[#edebe9] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-4 border-b border-[#edebe9] flex items-center justify-between bg-[#fffcf5]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 font-bold">
+                  ⚡
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#201f1e] flex items-center gap-1.5">
+                    <span>Screen Automation &amp; Triggers:</span>
+                    <span className="text-[#0078d4]">{activeScreen.icon} {activeScreen.label}</span>
+                  </h3>
+                  <p className="text-[11px] text-[#605e5c]">
+                    Trigger ID: <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-[#edebe9]">{activeScreen.key}</code>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTriggersModalOpen(false)}
+                className="text-[#605e5c] hover:text-[#201f1e] p-1 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTriggers} className="p-4 space-y-4">
+              {/* 1. Intelligent Keyword Listeners */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-[#201f1e] flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5 text-[#0078d4]" />
+                    <span>Intelligent Keyword Listeners</span>
+                  </label>
+                  <span className="text-[10px] text-[#605e5c]">Auto-routes customer chat</span>
+                </div>
+                <p className="text-[11px] text-[#605e5c] mb-2 leading-relaxed">
+                  When a customer types any of these words in Telegram, the bot immediately opens this screen.
+                </p>
+                <input
+                  type="text"
+                  placeholder="e.g. price, pricing, discount, quote, cost, help"
+                  value={triggerKeywords}
+                  onChange={(e) => setTriggerKeywords(e.target.value)}
+                  className="w-full text-xs p-2.5 border border-[#d2d0ce] rounded-lg bg-[#faf9f8] focus:bg-white focus:outline-none focus:border-[#0078d4]"
+                />
+                {/* Keyword quick suggestions */}
+                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-[#8a8886]">Suggestions:</span>
+                  {['price', 'support', 'human', 'agent', 'discount', 'help', 'quote'].map((sug) => {
+                    const currentList = triggerKeywords
+                      .split(',')
+                      .map((s) => s.trim().toLowerCase())
+                      .filter(Boolean);
+                    const isAdded = currentList.includes(sug);
+                    return (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => {
+                          if (isAdded) return;
+                          setTriggerKeywords((prev) =>
+                            prev ? `${prev.trim()}, ${sug}` : sug,
+                          );
+                        }}
+                        disabled={isAdded}
+                        className={`text-[10px] px-2 py-0.5 rounded-full border transition cursor-pointer ${
+                          isAdded
+                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-default'
+                            : 'bg-white hover:bg-[#eff6fc] text-[#0078d4] border-[#c7e0f4]'
+                        }`}
+                      >
+                        +{sug}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. Slash Commands */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-[#201f1e] flex items-center gap-1.5">
+                    <Hash className="h-3.5 w-3.5 text-purple-600" />
+                    <span>Telegram Slash Commands</span>
+                  </label>
+                  <span className="text-[10px] text-[#605e5c]">Direct bot commands</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="e.g. /services, /pricing, /vip"
+                  value={triggerSlashCommands}
+                  onChange={(e) => setTriggerSlashCommands(e.target.value)}
+                  className="w-full text-xs font-mono p-2.5 border border-[#d2d0ce] rounded-lg bg-[#faf9f8] focus:bg-white focus:outline-none focus:border-purple-600"
+                />
+                <span className="text-[10px] text-[#8a8886] mt-1 block">
+                  Commands listed with forward slash, separated by commas.
+                </span>
+              </div>
+
+              {/* 3. Automated Lifecycle Sequences & Events */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-[#201f1e] flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-amber-600" />
+                    <span>Automated Lifecycle Event</span>
+                  </label>
+                  <span className="text-[10px] text-[#605e5c]">Automated drip &amp; triggers</span>
+                </div>
+                <select
+                  value={triggerEvent || 'none'}
+                  onChange={(e) => setTriggerEvent(e.target.value as any)}
+                  className="w-full text-xs p-2.5 border border-[#d2d0ce] rounded-lg bg-[#faf9f8]"
+                >
+                  <option value="none">⚪ Standard Manual Navigation (Buttons only)</option>
+                  <option value="first_deposit">🎉 First Deposit: Trigger onboarding &amp; VIP claim</option>
+                  <option value="order_completed">📦 Order Completed: Post-purchase satisfaction review</option>
+                  <option value="abandoned_cart">⏰ Abandoned Checkout: 30-min follow-up with 10% coupon</option>
+                </select>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-[#edebe9]">
+                <button
+                  type="button"
+                  onClick={() => setIsTriggersModalOpen(false)}
+                  className="px-3.5 py-1.5 text-xs text-[#605e5c] hover:bg-[#f3f2f1] rounded-lg font-medium cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-[#0078d4] hover:bg-[#106ebe] text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Zap className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
+                  <span>Save Automation Triggers</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

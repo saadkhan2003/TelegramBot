@@ -687,9 +687,8 @@ export default function Inspector({
                           copy[idx] = { ...btn, fullWidth: e.target.checked };
                           update({ buttons: copy });
                         }}
-                        className="rounded border-[#d2d0ce] text-[#0078d4] focus:ring-[#0078d4]"
                       />
-                      <span>Full width row (occupy entire line)</span>
+                      <span>Full Width Button (Span 2 Columns)</span>
                     </label>
                   )}
                 </div>
@@ -697,6 +696,384 @@ export default function Inspector({
             </div>
           </div>
         )}
+
+        {/* FORM INPUT */}
+        {component.type === 'form_input' && (
+          <div className="space-y-3">
+            <div>
+              <label className={labelClass}>User Prompt / Instruction</label>
+              <textarea
+                rows={3}
+                className={inputClass}
+                placeholder="Ask user for their email, screenshot or details..."
+                value={component.formConfig?.promptText || ''}
+                onChange={(e) =>
+                  update({
+                    formConfig: {
+                      ...(component.formConfig || {
+                        fieldType: 'text',
+                        variableName: 'user_input',
+                        actionOnSubmit: 'save_variable',
+                      }),
+                      promptText: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={labelClass}>Expected Input Type</label>
+                <select
+                  className={inputClass}
+                  value={component.formConfig?.fieldType || 'text'}
+                  onChange={(e) =>
+                    update({
+                      formConfig: {
+                        ...(component.formConfig || {
+                          promptText: '',
+                          variableName: 'user_input',
+                          actionOnSubmit: 'save_variable',
+                        }),
+                        fieldType: e.target.value as any,
+                      },
+                    })
+                  }
+                >
+                  <option value="text">Plain Text</option>
+                  <option value="email">Email Address</option>
+                  <option value="number">Number / Amount</option>
+                  <option value="screenshot">Payment Screenshot / Photo</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={labelClass}>Save Into Variable</label>
+                <input
+                  type="text"
+                  className={inputClass}
+                  placeholder="variable_name"
+                  value={component.formConfig?.variableName || ''}
+                  onChange={(e) =>
+                    update({
+                      formConfig: {
+                        ...(component.formConfig || {
+                          promptText: '',
+                          fieldType: 'text',
+                          actionOnSubmit: 'save_variable',
+                        }),
+                        variableName: e.target.value,
+                      },
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>Action on Submission</label>
+              <select
+                className={inputClass}
+                value={component.formConfig?.actionOnSubmit || 'save_variable'}
+                onChange={(e) =>
+                  update({
+                    formConfig: {
+                      ...(component.formConfig || {
+                        promptText: '',
+                        fieldType: 'text',
+                        variableName: 'user_input',
+                      }),
+                      actionOnSubmit: e.target.value as any,
+                    },
+                  })
+                }
+              >
+                <option value="save_variable">Save to User Profile Variable</option>
+                <option value="create_claim">Create Support Ticket / Claim</option>
+                <option value="create_order">Create Custom Service Order</option>
+                <option value="webhook">Trigger External Webhook</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* AI COPILOT */}
+        {component.type === 'ai_copilot' && (
+          <div className="space-y-3">
+            <div>
+              <label className={labelClass}>AI System Persona &amp; Instructions</label>
+              <textarea
+                rows={4}
+                className={inputClass}
+                placeholder="Give instructions to Gemini on how to answer user questions..."
+                value={component.aiConfig?.instruction || ''}
+                onChange={(e) =>
+                  update({
+                    aiConfig: {
+                      ...(component.aiConfig || {}),
+                      instruction: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Knowledge Base Context</label>
+              <select
+                className={inputClass}
+                value={component.aiConfig?.knowledgeContext || 'catalog'}
+                onChange={(e) =>
+                  update({
+                    aiConfig: {
+                      ...(component.aiConfig || {}),
+                      knowledgeContext: e.target.value as any,
+                    },
+                  })
+                }
+              >
+                <option value="catalog">Store Products &amp; Catalog</option>
+                <option value="faq">FAQ &amp; Store Policies</option>
+                <option value="orders">Orders &amp; Warranty Guidelines</option>
+                <option value="general">Full Sovereign Store Knowledge</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>Human Support Handoff Button Label</label>
+              <input
+                type="text"
+                className={inputClass}
+                placeholder="e.g. 💬 Speak with Operator"
+                value={component.aiConfig?.handoffButtonLabel || ''}
+                onChange={(e) =>
+                  update({
+                    aiConfig: {
+                      ...(component.aiConfig || {}),
+                      handoffButtonLabel: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+          </div>
+        )}
+
+        {/* CAROUSEL SLIDER */}
+        {component.type === 'carousel' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className={labelClass}>Product Carousel Slides</label>
+              <button
+                type="button"
+                onClick={() => {
+                  const slides = component.carouselSlides || [];
+                  update({
+                    carouselSlides: [
+                      ...slides,
+                      {
+                        id: uid(),
+                        title: `Slide #${slides.length + 1}`,
+                        description: 'Featured offering description.',
+                        price: '$49',
+                        buttonLabel: '⚡ Select Plan',
+                      },
+                    ],
+                  });
+                }}
+                className="text-[10px] text-[#0078d4] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Add Slide</span>
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {(component.carouselSlides || []).map((slide, idx) => (
+                <div key={slide.id} className="p-2.5 bg-[#faf9f8] border border-[#edebe9] rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#201f1e]">Slide {idx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const copy = (component.carouselSlides || []).filter((_, i) => i !== idx);
+                        update({ carouselSlides: copy });
+                      }}
+                      className="text-red-500 hover:text-red-700 text-xs p-1"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    className={inputClass}
+                    placeholder="Slide Title"
+                    value={slide.title}
+                    onChange={(e) => {
+                      const copy = [...(component.carouselSlides || [])];
+                      copy[idx] = { ...slide, title: e.target.value };
+                      update({ carouselSlides: copy });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    className={inputClass}
+                    placeholder="Price (e.g. $29)"
+                    value={slide.price || ''}
+                    onChange={(e) => {
+                      const copy = [...(component.carouselSlides || [])];
+                      copy[idx] = { ...slide, price: e.target.value };
+                      update({ carouselSlides: copy });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    className={inputClass}
+                    placeholder="Button Label"
+                    value={slide.buttonLabel || ''}
+                    onChange={(e) => {
+                      const copy = [...(component.carouselSlides || [])];
+                      copy[idx] = { ...slide, buttonLabel: e.target.value };
+                      update({ carouselSlides: copy });
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* VIDEO NOTE & AUDIO */}
+        {(component.type === 'video_note' || component.type === 'audio') && (
+          <div className="space-y-3">
+            <div>
+              <label className={labelClass}>Media Caption / Title</label>
+              <input
+                type="text"
+                className={inputClass}
+                placeholder="Media description..."
+                value={component.caption || ''}
+                onChange={(e) => update({ caption: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Duration (Seconds)</label>
+              <input
+                type="number"
+                className={inputClass}
+                placeholder="15"
+                value={component.mediaDurationSec || 15}
+                onChange={(e) => update({ mediaDurationSec: Number(e.target.value) || 15 })}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* STARS INVOICE */}
+        {component.type === 'stars_invoice' && (
+          <div className="space-y-3">
+            <div>
+              <label className={labelClass}>Invoice Title</label>
+              <input
+                type="text"
+                className={inputClass}
+                placeholder="Digital Pass"
+                value={component.invoiceConfig?.title || ''}
+                onChange={(e) =>
+                  update({
+                    invoiceConfig: {
+                      ...(component.invoiceConfig || {
+                        description: '',
+                        priceStars: 250,
+                        currency: 'XTR',
+                        payload: 'pass_1',
+                      }),
+                      title: e.target.value,
+                    },
+                  })
+                }
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Price (Telegram Stars ⭐)</label>
+              <input
+                type="number"
+                className={inputClass}
+                placeholder="250"
+                value={component.invoiceConfig?.priceStars || 250}
+                onChange={(e) =>
+                  update({
+                    invoiceConfig: {
+                      ...(component.invoiceConfig || {
+                        title: 'Product',
+                        description: '',
+                        currency: 'XTR',
+                        payload: 'pass_1',
+                      }),
+                      priceStars: Number(e.target.value) || 100,
+                    },
+                  })
+                }
+              />
+            </div>
+          </div>
+        )}
+
+        {/* PERSONALIZATION & VISIBILITY RULES (Point 1: Dynamic Conditionals) */}
+        <div className="pt-4 border-t border-[#edebe9] space-y-2.5">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold text-[#605e5c] uppercase tracking-wider flex items-center gap-1.5">
+              <span>👁</span>
+              <span>Conditional Logic &amp; Target Rules</span>
+            </label>
+            {component.condition && (
+              <button
+                type="button"
+                onClick={() => update({ condition: undefined })}
+                className="text-[10px] text-red-600 hover:underline cursor-pointer"
+              >
+                Reset Rule
+              </button>
+            )}
+          </div>
+
+          <div className="bg-[#faf9f8] p-2.5 rounded-lg border border-[#edebe9] space-y-2">
+            <select
+              className={inputClass}
+              value={component.condition?.field || 'always'}
+              onChange={(e) => {
+                const val = e.target.value as any;
+                if (val === 'always') {
+                  update({ condition: undefined });
+                } else {
+                  update({
+                    condition: {
+                      field: val,
+                      operator: val === 'orders' ? 'eq' : 'gt',
+                      value: val === 'orders' ? 0 : 50,
+                    },
+                  });
+                }
+              }}
+            >
+              <option value="always">Always Visible (All Users)</option>
+              <option value="orders">New Users Only (Orders === 0)</option>
+              <option value="balance">VIP Depositors (Wallet Balance &gt; X)</option>
+              <option value="referrals">Affiliate Leaders (Referrals &gt; X)</option>
+              <option value="vip_member">VIP Subscribed Tagged Members</option>
+            </select>
+
+            {component.condition && (
+              <div className="flex items-center gap-2 pt-1 text-xs">
+                <span className="text-[#605e5c] font-medium">Condition:</span>
+                <span className="font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
+                  {component.condition.field} {component.condition.operator} {component.condition.value}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

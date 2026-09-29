@@ -15,9 +15,22 @@ export type ComponentType =
   | 'social_links'
   | 'button'
   | 'button_row'
-  | 'button_grid';
+  | 'button_grid'
+  // Enterprise Automation & Media Types:
+  | 'form_input'
+  | 'ai_copilot'
+  | 'carousel'
+  | 'video_note'
+  | 'audio'
+  | 'stars_invoice';
 
-export type ButtonType = 'callback' | 'url' | 'web_app' | 'screen';
+export type ButtonType = 'callback' | 'url' | 'web_app' | 'screen' | 'payment';
+
+export interface ButtonAnalytics {
+  clicks: number;
+  ctr: number; // percentage
+  conversions?: number;
+}
 
 export interface BotButton {
   id: string;
@@ -28,6 +41,7 @@ export interface BotButton {
   webAppUrl?: string;     // Telegram Mini App URL
   targetScreen?: string;  // key of custom screen to navigate to
   fullWidth?: boolean;
+  analytics?: ButtonAnalytics;
 }
 
 export interface SocialLinkItem {
@@ -38,9 +52,52 @@ export interface SocialLinkItem {
   emoji?: string;
 }
 
+export interface VisibilityCondition {
+  field: 'always' | 'balance' | 'orders' | 'referrals' | 'has_ticket' | 'vip_member';
+  operator: 'eq' | 'neq' | 'gt' | 'lt';
+  value: string | number;
+}
+
+export interface FormInputConfig {
+  promptText: string;
+  fieldType: 'text' | 'number' | 'photo' | 'screenshot' | 'email';
+  variableName: string;
+  actionOnSubmit: 'save_variable' | 'create_claim' | 'create_order' | 'webhook';
+  webhookUrl?: string;
+}
+
+export interface AiCopilotConfig {
+  instruction?: string;
+  knowledgeContext?: 'catalog' | 'faq' | 'orders' | 'general';
+  handoffButtonLabel?: string;
+  temperature?: number;
+}
+
+export interface CarouselSlide {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  price?: string;
+  buttonLabel?: string;
+  buttonUrl?: string;
+  buttonScreen?: string;
+}
+
+export interface StarsInvoiceConfig {
+  title: string;
+  description: string;
+  priceStars: number;
+  currency: 'XTR' | 'USD' | 'EUR';
+  payload: string;
+}
+
 export interface BotComponent {
   id: string;
   type: ComponentType;
+
+  // Personalized Logic & Conditionals
+  condition?: VisibilityCondition;
 
   // text & quote
   content?: string;
@@ -82,6 +139,25 @@ export interface BotComponent {
 
   // button rows & grids
   buttons?: BotButton[];
+
+  // Enterprise Modules
+  formConfig?: FormInputConfig;
+  aiConfig?: AiCopilotConfig;
+  carouselSlides?: CarouselSlide[];
+  invoiceConfig?: StarsInvoiceConfig;
+  mediaDurationSec?: number;
+}
+
+export interface ScreenTriggers {
+  keywords?: string[];
+  slashCommands?: string[];
+  event?: 'none' | 'first_deposit' | 'order_completed' | 'abandoned_cart';
+}
+
+export interface ScreenAnalytics {
+  impressions: number;
+  uniqueUsers: number;
+  avgEngagementSec: number;
 }
 
 export interface BotScreen {
@@ -92,6 +168,8 @@ export interface BotScreen {
   category?: 'general' | 'store' | 'agency' | 'saas' | 'community' | 'support' | 'custom';
   isCustom?: boolean;
   components: BotComponent[];
+  triggers?: ScreenTriggers;
+  analytics?: ScreenAnalytics;
 }
 
 // Predefined universal bot callback actions
@@ -160,6 +238,10 @@ export const DEFAULT_SCREENS: BotScreen[] = [
     icon: '🏠',
     description: 'Main landing menu sent when user starts the bot',
     category: 'general',
+    triggers: {
+      slashCommands: ['/start', '/menu', '/home'],
+      keywords: ['start', 'menu', 'home', 'main'],
+    },
     components: [
       {
         id: uid(),
@@ -195,6 +277,10 @@ export const DEFAULT_SCREENS: BotScreen[] = [
     icon: '💼',
     description: 'Showcase digital agency services, freelance work, or SaaS plans',
     category: 'agency',
+    triggers: {
+      keywords: ['price', 'pricing', 'service', 'services', 'packages', 'quote', 'cost', 'rates', 'discount'],
+      slashCommands: ['/services', '/pricing', '/quote'],
+    },
     components: [
       { id: uid(), type: 'text', content: '💼 Our Services & Solutions', bold: true },
       { id: uid(), type: 'quote', content: 'High performance solutions engineered to accelerate your business growth.' },
@@ -229,6 +315,10 @@ export const DEFAULT_SCREENS: BotScreen[] = [
     icon: '⚡',
     description: 'Launch Telegram Mini App (Web App) inside Telegram',
     category: 'saas',
+    triggers: {
+      keywords: ['app', 'miniapp', 'webapp', 'portal', 'dashboard'],
+      slashCommands: ['/app', '/dashboard'],
+    },
     components: [
       { id: uid(), type: 'text', content: '⚡ {storeName} Mini App', bold: true },
       { id: uid(), type: 'text', content: 'Launch our interactive full-screen application without ever leaving Telegram!' },
@@ -267,6 +357,10 @@ export const DEFAULT_SCREENS: BotScreen[] = [
     icon: '❓',
     description: 'Frequently asked questions, guides, and policies',
     category: 'support',
+    triggers: {
+      keywords: ['faq', 'question', 'questions', 'helpdesk', 'policy', 'refund', 'terms'],
+      slashCommands: ['/faq', '/helpdesk'],
+    },
     components: [
       { id: uid(), type: 'text', content: '❓ Frequently Asked Questions', bold: true },
       { id: uid(), type: 'text', content: 'Answers to the most common questions about our platform and services.' },
@@ -308,6 +402,10 @@ export const DEFAULT_SCREENS: BotScreen[] = [
     icon: '🌐',
     description: 'Official social media, channel links, and community groups',
     category: 'community',
+    triggers: {
+      keywords: ['community', 'channel', 'chat', 'group', 'socials', 'telegram', 'twitter'],
+      slashCommands: ['/community', '/socials'],
+    },
     components: [
       { id: uid(), type: 'text', content: '🌐 Join Our Global Community', bold: true },
       { id: uid(), type: 'text', content: 'Stay updated with daily announcements, giveaways, and customer support channels.' },
@@ -334,6 +432,10 @@ export const DEFAULT_SCREENS: BotScreen[] = [
     icon: '💰',
     description: 'Wallet balance, transaction ledger, and deposit methods',
     category: 'store',
+    triggers: {
+      keywords: ['wallet', 'deposit', 'balance', 'funds', 'topup', 'pay', 'money'],
+      slashCommands: ['/wallet', '/deposit', '/balance'],
+    },
     components: [
       { id: uid(), type: 'text', content: '💰 My Account Wallet', bold: true },
       { id: uid(), type: 'divider' },
@@ -360,6 +462,10 @@ export const DEFAULT_SCREENS: BotScreen[] = [
     icon: '💬',
     description: 'Customer ticket dispatch and issue resolution menu',
     category: 'support',
+    triggers: {
+      keywords: ['support', 'help', 'human', 'agent', 'operator', 'ticket', 'issue', 'problem', 'claim'],
+      slashCommands: ['/support', '/help', '/human'],
+    },
     components: [
       { id: uid(), type: 'text', content: '💬 Customer Support Desk', bold: true },
       { id: uid(), type: 'text', content: 'Please select what category best describes your inquiry:' },
@@ -385,6 +491,10 @@ export const DEFAULT_SCREENS: BotScreen[] = [
     icon: '👤',
     description: 'Detailed user identity and activity statistics',
     category: 'general',
+    triggers: {
+      keywords: ['profile', 'account', 'me', 'id', 'user'],
+      slashCommands: ['/profile', '/account', '/me'],
+    },
     components: [
       { id: uid(), type: 'text', content: '👤 Account Overview', bold: true },
       { id: uid(), type: 'divider' },

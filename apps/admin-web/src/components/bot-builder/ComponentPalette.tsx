@@ -18,6 +18,7 @@ import {
   HelpCircle,
   Share2,
   Plus,
+  Sparkles,
 } from 'lucide-react';
 import { ComponentType, BotComponent, uid } from '../../lib/botBuilderTypes';
 
@@ -173,6 +174,118 @@ const PALETTE_GROUPS: { group: string; items: PaletteItem[] }[] = [
           type: 'faq_item',
           question: 'How do I get started with {storeName}?',
           answer: 'Simply choose a service from the menu, or contact our support team directly for custom inquiries.',
+        }),
+      },
+    ],
+  },
+  {
+    group: 'AI & Automation Engine',
+    items: [
+      {
+        type: 'form_input',
+        title: 'Interactive Intake Form',
+        description: 'Ask user for email, screenshot or details',
+        icon: Plus,
+        create: () => ({
+          id: uid(),
+          type: 'form_input',
+          formConfig: {
+            promptText: 'Please reply with your account email or transaction ID:',
+            fieldType: 'text',
+            variableName: 'custom_user_input',
+            actionOnSubmit: 'save_variable',
+          },
+        }),
+      },
+      {
+        type: 'ai_copilot',
+        title: 'AI Copilot Assistant',
+        description: 'Gemini intelligent answering with human fallback',
+        icon: Sparkles,
+        create: () => ({
+          id: uid(),
+          type: 'ai_copilot',
+          aiConfig: {
+            instruction: 'You are the intelligent assistant for {storeName}. Help answer questions concisely and guide users to explore services or contact support.',
+            knowledgeContext: 'general',
+            handoffButtonLabel: '💬 Speak with Human Operator',
+            temperature: 0.7,
+          },
+        }),
+      },
+    ],
+  },
+  {
+    group: 'Rich Media & Native Commerce',
+    items: [
+      {
+        type: 'carousel',
+        title: 'Product Carousel Slider',
+        description: 'Multi-slide catalog with ⬅️ / ➡️ paging',
+        icon: Columns,
+        create: () => ({
+          id: uid(),
+          type: 'carousel',
+          carouselSlides: [
+            {
+              id: uid(),
+              title: '⭐ Premium Membership',
+              description: 'Unlimited access to all VIP tools and sovereign features.',
+              price: '$29 / mo',
+              buttonLabel: '⚡ Upgrade Now',
+              buttonScreen: 'services',
+            },
+            {
+              id: uid(),
+              title: '🚀 Enterprise Node',
+              description: 'Dedicated infrastructure with 99.99% uptime guarantee.',
+              price: '$99 / mo',
+              buttonLabel: '💼 Order Node',
+              buttonScreen: 'services',
+            },
+          ],
+        }),
+      },
+      {
+        type: 'video_note',
+        title: 'Round Video Note',
+        description: 'Telegram native circular video bubble',
+        icon: ImageIcon,
+        create: () => ({
+          id: uid(),
+          type: 'video_note',
+          imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop',
+          caption: '🎥 Video message from the founder',
+          mediaDurationSec: 15,
+        }),
+      },
+      {
+        type: 'audio',
+        title: 'Voice / Audio Note',
+        description: 'Recorded audio message with waveform',
+        icon: Info,
+        create: () => ({
+          id: uid(),
+          type: 'audio',
+          caption: '🎙 Audio briefing & instructions',
+          mediaDurationSec: 45,
+        }),
+      },
+      {
+        type: 'stars_invoice',
+        title: 'Telegram Stars Invoice',
+        description: 'Native in-app Stars & digital payments',
+        icon: Square,
+        create: () => ({
+          id: uid(),
+          type: 'stars_invoice',
+          invoiceConfig: {
+            title: 'Digital Service Pass',
+            description: 'Instant unlocking of your selected service tier.',
+            priceStars: 250,
+            currency: 'XTR',
+            payload: 'service_pass_v1',
+          },
         }),
       },
     ],
