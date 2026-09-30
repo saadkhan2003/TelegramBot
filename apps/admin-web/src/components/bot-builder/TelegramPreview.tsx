@@ -97,16 +97,20 @@ const SAMPLE_VARS: Record<string, string> = {
   // Support & System
   'support.open_tickets': '0',
   ticketNumber: 'TCK-8921',
+  userName: 'ahmed_hassan',
   'date.today': 'Sep 29, 2026',
   'time.now': '21:05 UTC',
   year: '2026',
 };
 
 function interpolate(text: string, vars: Record<string, string>): string {
-  return Object.entries(vars).reduce(
-    (t, [k, v]) => t.replace(new RegExp(`\\{${k}\\}`, 'g'), v),
-    text || '',
-  );
+  if (!text) return '';
+  let result = text;
+  for (const [k, v] of Object.entries(vars)) {
+    const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result = result.replace(new RegExp(`\\{${escaped}\\}`, 'gi'), v);
+  }
+  return result;
 }
 
 function renderText(text: string): React.ReactNode[] {
@@ -574,45 +578,93 @@ export default function TelegramPreview({
     }
   };
 
-  const bubbleContent = (
-    <div className="bg-[#182533] rounded-2xl p-3.5 space-y-2.5 text-white/90 shadow-md border border-white/5">
-      {components.length === 0 ? (
-        <div className="text-center py-10 text-xs text-white/30 italic">
-          Canvas is empty. Click elements on the left to start building.
-        </div>
-      ) : (
-        components.map((comp) => {
-          const isSelected = comp.id === selectedId;
-          return (
-            <div
-              key={comp.id}
-              onClick={(e) => {
-                if (onSelect) {
-                  e.stopPropagation();
-                  onSelect(comp.id);
-                }
-              }}
-              className={`rounded-lg p-1.5 transition cursor-pointer relative group ${
-                isSelected
-                  ? 'ring-2 ring-[#0078d4] bg-white/5'
-                  : 'hover:bg-white/[0.04] hover:ring-1 hover:ring-white/20'
-              }`}
-            >
-              {renderComponent(comp)}
-              {isSelected && (
-                <span className="absolute -top-2 right-2 bg-[#0078d4] text-white text-[9px] font-bold px-1.5 py-0.2 rounded shadow-xs">
-                  Active
-                </span>
-              )}
-            </div>
-          );
-        })
-      )}
+  // In Telegram messages: content blocks go inside the message bubble,
+  // while button blocks (action buttons, button rows, button grids) form the attached inline keyboard at the bottom.
+  const contentComponents = components.filter(
+    (c) => !['button', 'button_row', 'button_grid'].includes(c.type)
+  );
+  const buttonComponents = components.filter((c) =>
+    ['button', 'button_row', 'button_grid'].includes(c.type)
+  );
 
-      {/* Timestamp */}
-      <div className="text-right text-[10px] text-white/40 pt-1 font-mono">
-        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ✓✓
+  const bubbleContent = (
+    <div className="space-y-2">
+      {/* Telegram Message Bubble */}
+      <div className="bg-[#182533] rounded-2xl p-3.5 space-y-2.5 text-white/90 shadow-md border border-white/5">
+        {contentComponents.length === 0 && buttonComponents.length === 0 ? (
+          <div className="text-center py-10 text-xs text-white/30 italic">
+            Canvas is empty. Click elements on the left to start building.
+          </div>
+        ) : contentComponents.length === 0 ? (
+          <div className="text-xs text-white/60 italic py-1">
+            (No text content in message)
+          </div>
+        ) : (
+          contentComponents.map((comp) => {
+            const isSelected = comp.id === selectedId;
+            return (
+              <div
+                key={comp.id}
+                onClick={(e) => {
+                  if (onSelect) {
+                    e.stopPropagation();
+                    onSelect(comp.id);
+                  }
+                }}
+                className={`rounded-lg p-1.5 transition cursor-pointer relative group ${
+                  isSelected
+                    ? 'ring-2 ring-[#0078d4] bg-white/5'
+                    : 'hover:bg-white/[0.04] hover:ring-1 hover:ring-white/20'
+                }`}
+              >
+                {renderComponent(comp)}
+                {isSelected && (
+                  <span className="absolute -top-2 right-2 bg-[#0078d4] text-white text-[9px] font-bold px-1.5 py-0.2 rounded shadow-xs">
+                    Active
+                  </span>
+                )}
+              </div>
+            );
+          })
+        )}
+
+        {/* Timestamp inside bubble */}
+        <div className="text-right text-[10px] text-white/40 pt-1 font-mono">
+          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ✓✓
+        </div>
       </div>
+
+      {/* Telegram Attached Inline Keyboard (Always below message bubble) */}
+      {buttonComponents.length > 0 && (
+        <div className="space-y-1.5 pt-0.5">
+          {buttonComponents.map((comp) => {
+            const isSelected = comp.id === selectedId;
+            return (
+              <div
+                key={comp.id}
+                onClick={(e) => {
+                  if (onSelect) {
+                    e.stopPropagation();
+                    onSelect(comp.id);
+                  }
+                }}
+                className={`rounded-lg p-1 transition cursor-pointer relative group ${
+                  isSelected
+                    ? 'ring-2 ring-[#0078d4] bg-white/5'
+                    : 'hover:bg-white/[0.04] hover:ring-1 hover:ring-white/20'
+                }`}
+              >
+                {renderComponent(comp)}
+                {isSelected && (
+                  <span className="absolute -top-2 right-2 bg-[#0078d4] text-white text-[9px] font-bold px-1.5 py-0.2 rounded shadow-xs z-10">
+                    Active
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 

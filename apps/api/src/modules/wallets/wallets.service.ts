@@ -46,13 +46,6 @@ export class WalletsService {
     const where: any = {};
     if (params.walletId) where.walletId = params.walletId;
     if (params.userId) where.wallet = { userId: params.userId };
-    if (params.storeId) {
-      // Scope to wallets owned by users who belong to this store (via deposits)
-      where.wallet = {
-        ...(where.wallet || {}),
-        user: { deposits: { some: { storeId: params.storeId } } },
-      };
-    }
     if (params.type) where.type = params.type;
 
     const [items, total] = await Promise.all([

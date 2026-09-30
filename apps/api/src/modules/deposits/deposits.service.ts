@@ -176,7 +176,6 @@ export class DepositsService {
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (params?.storeId) where.storeId = params.storeId;
     if (params?.userId) where.userId = params.userId;
     if (params?.status) where.status = params.status;
 
